@@ -6,6 +6,9 @@ rights change or message is written. Reports contain counts, never source text.
 import json
 from pathlib import Path
 import time
+from datetime import datetime
+from urllib.parse import urlsplit, parse_qs, urlencode
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -43,6 +46,17 @@ def main():
             for competitor in data['competitors']:
                 rows = get('/api' + competitor['href'])
                 assert rows['total']['count'] == competitor['count'], f'{window}: competitor drilldown differs'
+            days = {}
+            if window == '7d':
+                for bucket in data['hourly']:
+                    day = datetime.fromisoformat(bucket['at'].replace('Z', '+00:00')).astimezone(ZoneInfo('Europe/Kyiv')).date().isoformat()
+                    days.setdefault(day, {'count': 0, 'href': bucket['href']})['count'] += bucket['count']
+                for day, bucket in days.items():
+                    parsed = urlsplit(bucket['href'])
+                    params = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+                    params.update(day=day, **{'from': data['start'], 'until': data['end']})
+                    proof = get('/api' + parsed.path + '?' + urlencode(params))
+                    assert proof['total']['count'] == bucket['count'], 'Weekly daily proof differs'
             brand = get('/api' + data['vodafone_7d']['href'])
             assert brand['total']['count'] == data['vodafone_7d']['count'], f'{window}: Vodafone drilldown differs'
             assert all(item['brand'] == 'vodafone' and item['decision'] == 'accepted' for item in brand['items'])
@@ -53,6 +67,7 @@ def main():
             print(json.dumps({'window': window, 'mentions': feed['total']['count'],
                               'vodafone_7d': brand['total']['count'], 'sources_checked': len(data['sources']),
                               'dashboard_seconds': round(elapsed, 3),
+                              'daily_bars_checked': len(days),
                               'aggregate_updated_at': data.get('aggregate_updated_at'),
                               'result': 'PASS'}, ensure_ascii=False), flush=True)
         status = get('/api/admin/ai/status')

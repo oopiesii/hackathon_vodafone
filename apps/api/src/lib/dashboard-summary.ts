@@ -53,10 +53,10 @@ export async function dashboardSummary(workflow:string,window:DashboardWindow,re
   const proof='/'+(review?'inbox':'feed')+'?'+new URLSearchParams({workflow_id:workflow,source_ids:row.source_ids.join(',')||'0',
    from:iso(row.window_start),until:iso(row.window_end),...(review?{}:{decision:'accepted'})});
   return {...result,status:row.mode==='ai'&&status==='pending'?'ready':status,
-   label:row.mode==='ai'&&status==='pending'?'AI-зведення':row.mode==='rules'&&status==='pending'?'Зведення за правилами':labels[status]!,
-   mode:row.mode,summary:body.headline,href:proof,generated_at:iso(row.generated_at),model:row.model,
+   label:row.mode==='ai'&&status==='pending'?'AI-зведення':row.mode==='rules'&&status==='pending'?'Шаблонне зведення':labels[status]!,
+   mode:row.mode,summary:row.mode==='rules'?`Матеріалів за період у джерелах із дозволом на AI: ${body.provenance.counts.total.toLocaleString('uk-UA')}; прийнятих: ${body.provenance.counts.accepted.toLocaleString('uk-UA')}.`:body.headline,href:proof,generated_at:iso(row.generated_at),model:row.model,
    window_start:iso(row.window_start),window_end:iso(row.window_end),observations:observations as DashboardSummary['observations'],
-   limitations:body.limitations,coverage:{scope:'allowed_sources',evidence_sample:body.provenance.evidence_sample,
+   limitations:row.mode==='rules'?['Шаблонне зведення за підрахунками актуального відбору; модельного висновку немає.']:body.limitations,coverage:{scope:'allowed_sources',evidence_sample:body.provenance.evidence_sample,
     note:'Знімок тільки джерел із чинним дозволом на AI; покриття може відрізнятися від загальних метрик.'}};
  }
  if(review===false&&status==='pending')return {...result,status:'rules',label:'Зведення · лише прийняті матеріали'};

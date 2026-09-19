@@ -66,9 +66,17 @@ def test_s2_dashboard_mixed_input_is_operator_only_and_null_provider_is_honest(p
         # Fresh state without a key is specifically waiting_key, never a fabricated AI result.
         db.execute("update core.analyst_state set mode='waiting_key',heartbeat_at=now()")
         assert summarize_window(db,1,'7d',NullProvider(),Config())=='rules'
+        # Saved legacy templates called effective curated counts "rules". The API
+        # must reconstruct the template from this permitted scope's own counts.
+        db.execute("""update core.ai_summaries set body=jsonb_set(body,'{headline}',
+            '\"За вікно: 2 дозволених матеріалів; 1 прийнято правилами.\"'::jsonb)
+            where workflow_id=1 and mode='rules'""")
         result=admin.get('/api/dashboard?window=7d').json()['ai']
         assert result['status']=='waiting_key' and result['label']=='AI очікує ключ'
         assert result['mode']=='rules' and result['generated_at']
+        assert 'прийнято правилами' not in result['summary']
+        assert 'дозволом на AI: 2; прийнятих: 1.' in result['summary']
+        assert result['coverage']['scope']=='allowed_sources'
         db.execute("update core.analyst_state set heartbeat_at=now()-interval '10 minutes'")
         assert admin.get('/api/dashboard?window=7d').json()['ai']['status']=='unavailable'
     finally:viewer.close();analyst.close()

@@ -15,7 +15,7 @@ export const ROLES: Record<string, string> = { admin: "Адміністрато�
 
 export const ITEM_STATES: Record<string, { label: string; tone: Tone }> = {
   pending: { label: "Очікує обробки", tone: "info" },
-  accepted: { label: "У стрічці", tone: "success" },
+  accepted: { label: "Прийнято попередньо", tone: "success" },
   review: { label: "На перевірці", tone: "warning" },
   rejected: { label: "Відсіяне", tone: "secondary" },
   deleted: { label: "Видалено у джерелі", tone: "danger" },

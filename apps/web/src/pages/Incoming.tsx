@@ -64,7 +64,8 @@ export function Incoming({ me }: { me: Me | undefined }) {
       />
 
       {scoped && <div className="feed-scope"><Badge tone="info">Зріз із дашборда</Badge><span>{formatDateTime(searchParams.get("from"))} – {formatDateTime(searchParams.get("until"))}</span><button className="btn btn-ghost btn-sm" type="button" onClick={() => setSearchParams({ workflow_id: workflow, state })}>Скинути зріз</button></div>}
-      <Tabs label="Стан обробки" value={state} onChange={(next) => { setState(next); }}
+      <p className="note">Стани первинної обробки. Фінальний семантичний відбір показано у <Link to="/feed">стрічці</Link>; її склад і кількість можуть відрізнятися.</p>
+      <Tabs label="Стан первинної обробки" value={state} onChange={(next) => { setState(next); }}
         items={[
           { value: "all", label: "Увесь вхід", count: incoming.data ? total : "—" },
           ...Object.entries(ITEM_STATES).map(([key, s]) => ({ value: key, label: s.label, count: incoming.data ? counts[key] || 0 : "—" })),

@@ -19,7 +19,7 @@ export function HourlyBars({ data, daily }: { data: DashboardBucket[]; daily: bo
   const max = Math.max(1, ...data.map(d => d.count));
   const top = Math.max(1, Math.ceil(max / 4) * 4);
   const plotWidth = width - 44;
-  const step = plotWidth / Math.max(data.length, 1), bar = Math.min(20, step - 3);
+  const step = plotWidth / Math.max(data.length, 1), bar = Math.max(1, Math.min(20, step - 3));
   const selected = active === null ? null : data[active];
   return <div className="hourly-chart" ref={frame}>
     <div className="chart-legend"><span><i className="legend-accent" />Мережа й покриття</span><span><i className="legend-context" />Інші теми</span><span className="spacer">Матеріалів</span></div>

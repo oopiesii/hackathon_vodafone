@@ -20,18 +20,25 @@ const server = createServer(async (req,res) => {
   if(path==='/api/me') data={user,permissions:scenario==='viewer'?{incident:['view']}:{incident:['view','edit'],collector:['read','manage'],user:['list','create']}};
   if(path==='/api/admin/refresh') data={requests:['refresh','stale-refresh'].includes(scenario)?[{id:'1',workflow_id:'1',service:'telegram',status:'running',stale:scenario==='stale-refresh',collector_online:scenario!=='stale-refresh',requested_at:dashboard.end,started_at:dashboard.end,completed_at:null,detail:scenario==='stale-refresh'?'Немає свіжого сигналу збирача. Запит залишається в черзі; оновлення не підтверджено.':'Синтетична перевірка: збирач прийняв запит.'},{id:'2',workflow_id:'1',service:'rss',status:'deferred',requested_at:dashboard.end,started_at:dashboard.end,completed_at:dashboard.end,detail:'Очікування лімітів джерела збережено.'}]:[]};
   if(path==='/api/admin/state') data={telegram_enabled:true,accounts:[{id:1,label:'Демо',credentials_ready:false,status:'waiting'}],channels:[{id:1,workflow_id:1,account_id:1,username:'synthetic_channel',enabled:true,permission_note:'Синтетична підстава перевірки UI',source_type:'channel',status:'watching',post_cursor:1,last_success_at:dashboard.end,last_polled_at:dashboard.end}],services:[],threads:[{id:1,channel_id:1,post_id:1,comment_cursor:0,status:'resolve',last_error:null,last_polled_at:null}],audit:[],memberships:[],shares:[{id:1,workflow_id:1,name:'Синтетичне прострочене посилання',scope:'posts',channel_ids:'[]',topics:'["network"]',expires_at:1,revoked:false}],workflows:[{id:1,name:'Синтетичний workflow',enabled:true,comments_enabled:true,filter_spam:true,poll_seconds:30,history_days:7}]};
-  if(path==='/api/admin/rss') data={enabled:true,items:[],service:null,workflows:[{id:'1',name:'Демонстрація',enabled:true}]};
+  if(path==='/api/admin/rss') data={enabled:true,items:process.argv.includes('--copy')?[{id:'1',title:'Синтетичне RSS-джерело',feed_url:'https://example.test/rss',enabled:true,workflow_name:'Тестовий напрям',workflow_enabled:true,poll_seconds:300,rights_status:'allowed',terms_url:'https://example.test/terms',permission_note:'Лише синтетичні дані локальної перевірки',status:'ok',last_error:null,last_success_at:dashboard.end,next_poll_at:null,collected_count:12034,accepted_count:1234,last_new_count:1}]:[],service:null,workflows:[{id:'1',name:'Демонстрація',enabled:true}]};
   if(path==='/api/admin/ai/status') data={heartbeat_at:scenario==='stale-ai'?'2020-01-01T00:00:00Z':new Date().toISOString(),mode:scenario==='stale-ai'?'active':'waiting_key',model:null,last_error:null,limit_per_hour:60,items_last_hour:0,sources:[{id:'1',kind:'telegram',title:'Синтетичний Telegram',llm_allowed:false,llm_basis:null,rights_status:null},{id:'2',kind:'rss',title:'Дозволений RSS',llm_allowed:true,llm_basis:'Синтетична підстава',rights_status:'allowed'},{id:'3',kind:'rss',title:'Заблокований RSS',llm_allowed:false,llm_basis:null,rights_status:'blocked'}]};
   if(path==='/api/workflows') data={items:[{id:'1',name:'Vodafone та український телеком'}]};
   const item={id:'1',source_kind:'telegram',text:'Синтетичний приклад: перевірка матеріалу Vodafone.',summary:'',source_url:'https://example.test/evidence',published_at:dashboard.end,fetched_at:dashboard.end,processed_at:dashboard.end,edited_at:null,kind:'post',topic:'network',channel_title:'Синтетичне джерело',reason:'Тестовий матеріал',duplicate_of:null,context_id:null,manual_decision:null};
   if(path==='/api/feed') data={items:[item],total:{count:1,last_processed_at:dashboard.end},kinds:[{kind:'post',count:1}],topics:[{topic:'network',count:1}],next_before:null,summary_only:false,telegram_enabled:true};
   if(path==='/api/documents/1') data={document:item,context:null};
-  if(path==='/api/inbox') data={items:[],counts:[],sources:[],next_before:null};
+  if(path==='/api/inbox') data={items:[],counts:process.argv.includes('--copy')?[{state:'accepted',count:1234},{state:'rejected',count:90000},{state:'pending',count:0}]:[],sources:[],next_before:null};
   if(path==='/api/dashboard') {
    if(url.searchParams.get('window')==='7d'&&process.argv.includes('--flow'))await new Promise(r=>setTimeout(r,750));
    if(scenario==='error'){res.writeHead(503,{'content-type':'application/json'});res.end(JSON.stringify({error:'unavailable'}));return;}
    if(scenario==='loading'){await new Promise(r=>setTimeout(r,5000));}
    data=structuredClone(dashboard);
+   if(url.searchParams.get('window')==='7d'){
+    data.window='7d';data.start='2026-09-12T20:35:00.000Z';data.end='2026-09-19T20:35:00.000Z';
+    data.hourly=Array.from({length:169},(_,i)=>({at:new Date(Date.parse('2026-09-12T20:00:00Z')+i*3600000).toISOString(),count:i%13===0?1:0,topics:i%13===0?{network:1}:{},href:'/feed?workflow_id=1&decision=visible&window=7d'}));
+    data.metrics.mentions.value=data.hourly.reduce((n,b)=>n+b.count,0);data.metrics.mentions.series=data.hourly.map(b=>b.count);
+    data.counts.accepted=data.metrics.mentions.value;data.counts.review=0;
+    data.ai={status:'waiting_key',label:'AI очікує ключ',mode:'rules',generated_at:data.end,summary:'Матеріалів за період у джерелах із дозволом на AI: 188; прийнятих: 1.',href:'/inbox?source_ids=2',coverage:{scope:'allowed_sources',evidence_sample:1,note:'Лише синтетичні джерела з дозволом на AI.'},limitations:['Синтетичне зведення для перевірки інтерфейсу.']};
+   }
    if(scenario==='empty'){data.signals=[];data.sources=[];data.spread=[];data.competitors=[];data.counts={accepted:0,review:0,collected:85,rejected:85,pending:0};for(const m of Object.values(data.metrics)){m.value=m.unit==='матеріалів'?0:null;m.series=[];m.measured=0;}data.metrics.noise.value=85;data.metrics.noise.measured=85;data.reactions={...data.reactions,negative:0,ironic:0,sad:0,positive:0,total:0,observed_items:0,negative_share:null};data.hourly=data.hourly.map(h=>({...h,count:0,topics:{}}));data.ai.summary="За правилами: тематичних матеріалів немає; зібрано 85, відсіяно 85.";data.brand_status={...data.brand_status,level:'unknown',title:'Недостатньо тематичних матеріалів',reason:'За 24 години немає видимих згадок Vodafone.'};}
    if(scenario==='calculating'){data.aggregation={complete:false,generated_at:null,note:'Перераховуємо агрегати після оновлення матеріалів. Неповні лічильники приховано.'};data.aggregated=true;data.signals=[];for(const m of Object.values(data.metrics)){m.value=null;m.series=[];}data.brand_status.level='unknown';data.brand_status.reason='Очікуємо повного зрізу';data.ai.summary='Перерахунок агрегатів триває.';}
    if(scenario==='ai'){data.ai={...data.ai,status:'ready',mode:'ai',label:'AI · синтетичний приклад',model:'test-model',generated_at:dashboard.end,summary:'Синтетичне зведення: матеріали повідомляють про перебої зв’язку. Це приклад для перевірки інтерфейсу.',observations:[{text:'У тестовому повідомленні згадано перебої мобільного інтернету. Причину не встановлено.',evidence:[{id:'1',raw_item_id:'1',quote:'Синтетичний приклад: перевірка матеріалу Vodafone.',url:'https://example.test/evidence',href:'/feed?workflow_id=1&ids=1'}]}],coverage:{scope:'allowed_sources',evidence_sample:1,note:'Лише один синтетичний доказ; повнота покриття не оцінюється.'},limitations:['Це синтетичний приклад, не реальне зведення.']};}
@@ -61,7 +68,7 @@ for(const scenario of scenarios) for(const width of (process.env.UFV_WIDTHS || '
  const context=await browser.newContext({viewport:{width,height:900},colorScheme:theme,locale:'uk-UA',timezoneId:'Europe/Kyiv',extraHTTPHeaders:{'x-scenario':scenario}});
  const page=await context.newPage(), errors=[];
  page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error'&&scenario!=='error')errors.push(m.text());});
- await page.goto(`http://127.0.0.1:${server.address().port}/`,{waitUntil:'domcontentloaded'});
+ await page.goto(`http://127.0.0.1:${server.address().port}/?window=${process.env.UFV_WINDOW || '24h'}`,{waitUntil:'domcontentloaded'});
  if(scenario==='loading') await page.getByText('Збираємо показники').waitFor(); else if(scenario==='error') await page.getByText('Не вдалося оновити дашборд.').waitFor(); else await page.getByRole('link',{name:/Перевірити докази/}).waitFor();
  await page.evaluate(()=>document.fonts.ready);
  if(['refresh','stale-refresh'].includes(scenario)) await page.getByText('Перебіг збору',{exact:true}).click();
@@ -79,6 +86,16 @@ for(const scenario of scenarios) for(const width of (process.env.UFV_WIDTHS || '
   }return [...new Set(result)];
  });
  await page.screenshot({path:join(out,`${scenario}-${width}-${theme}.png`),fullPage:true});
+ if(process.env.UFV_WINDOW==='7d'){
+  await page.locator('.hourly-chart').screenshot({path:join(out,`weekly-chart-${width}-${theme}.png`)});
+  await page.locator('.dashboard-summary').screenshot({path:join(out,`summary-${width}-${theme}.png`)});
+  if(await page.locator('.hourly-svg a').count()!==8)issues.push('weekly chart not grouped into Kyiv days');
+ }
+ if(process.argv.includes('--copy'))for(const [name,path] of [['sources','/sources'],['rss','/sources/rss'],['inbox','/inbox']]){
+  await page.goto(`http://127.0.0.1:${server.address().port}${path}`,{waitUntil:'networkidle'});
+  if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1))issues.push(name+' overflow');
+  await page.screenshot({path:join(out,`copy-${name}-${width}-${theme}.png`),fullPage:true});
+ }
  if(scenario==='populated'&&process.argv.includes('--slots')) {
   await page.getByRole('button',{name:'Розрахувати сценарій'}).click();
   await page.getByLabel('Тривалість, год',{exact:true}).fill('2');

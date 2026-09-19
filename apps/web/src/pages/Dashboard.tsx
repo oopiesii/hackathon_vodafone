@@ -13,6 +13,7 @@ import { Impact } from "../components/dashboard/Impact";
 import { Summary } from "../components/dashboard/Summary";
 import { Signals } from "../components/dashboard/Signals";
 import { quantity } from "../lib/plural";
+import { dailyBuckets } from "../lib/chart-buckets";
 import { api, can, errorText, type Me } from "../lib/api";
 
 const time = (value: string | null) => value ? new Date(value).toLocaleString("uk-UA", { timeZone: "Europe/Kyiv", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "немає даних";
@@ -54,7 +55,7 @@ export function Dashboard({ me }: { me: Me | undefined }) {
       {data.analysis_coverage && <div className="dashboard-coverage"><strong>{data.analysis_coverage.label || "Семантичний відбір"}{data.analysis_coverage.cutoff_at ? ` · зріз ${time(data.analysis_coverage.cutoff_at)}` : ""}</strong><span>{data.analysis_coverage.note}</span>{data.analysis_coverage.pending !== undefined && <Link to={`/inbox?workflow_id=${workflow}`}>Очікує семантичної перевірки: {count(data.analysis_coverage.pending)} · відкрити увесь вхід</Link>}</div>}
       <div className="dashboard-grid">
         <Card className="dashboard-now span-7" title="Що зараз" actions={<Badge>Останні 24 год</Badge>} footer={<Link className="btn btn-ghost btn-sm" to={`/feed?workflow_id=${workflow}&decision=${data.visibility === "accepted" ? "accepted" : "visible"}`}>Відкрити стрічку<ArrowUpRight size={14} aria-hidden="true" /></Link>}><Signals data={data} /></Card>
-        <Card className="span-5" title={data.aggregated ? "Динаміка за днями" : "Динаміка згадок"}>{calculating ? waiting : <HourlyBars data={data.hourly} daily={data.aggregated} />}</Card>
+        <Card className="span-5" title={window !== "24h" ? "Динаміка за днями" : "Динаміка згадок"}>{calculating ? waiting : <HourlyBars data={window === "7d" ? dailyBuckets(data.hourly, data.start, data.end) : data.hourly} daily={window !== "24h"} />}</Card>
         <Card className="span-4" title="Реакції" actions={<Badge title={data.reactions.note}>Евристика</Badge>} footer={<span className="note">{calculating ? "Очікуємо повного зрізу" : `${quantity(data.reactions.observed_items, "матеріал", "матеріали", "матеріалів")} із реакціями · реакція на допис не дорівнює ставленню до оператора`}</span>}>{calculating ? waiting : <ShareBar negative={data.reactions.negative} ironic={data.reactions.ironic} sad={data.reactions.sad} positive={data.reactions.positive} href={data.reactions.href} />}{data.reaction_freshness && !calculating && <ReactionTiming data={data.reaction_freshness} />}</Card>
         <Card className="span-4" title="Джерела згадок">{calculating ? waiting : <BarList data={data.sources.slice(0, 5).map(s => ({ id: s.id, label: s.title, value: s.count, href: s.href }))} />}</Card>
         <Card className="span-4" title="Поширення" actions={<Badge title="Перепублікації не доводять незалежність джерел.">Збіги змісту</Badge>}>

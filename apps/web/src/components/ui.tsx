@@ -111,7 +111,7 @@ export function Tabs<T extends string>({ items, value, onChange, label }: {
       {items.map((item) => (
         <button key={item.value} type="button" className="tab" aria-pressed={item.value === value} onClick={() => onChange(item.value)}>
           {item.label}
-          {item.count !== undefined && <span className="tab-count">{item.count}</span>}
+          {item.count !== undefined && <span className="tab-count">{typeof item.count === "number" ? item.count.toLocaleString("uk-UA") : item.count}</span>}
         </button>
       ))}
     </div>

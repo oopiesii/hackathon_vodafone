@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 import { Alert, Badge, Card, Field, PageHeader, Switch } from '../components/ui';
 import { api, errorText, send } from '../lib/api';
 import { formatDateTime } from '../lib/format';
+import { quantity } from '../lib/plural';
 
 type Source={id:string;title:string;feed_url:string;enabled:boolean;workflow_name:string;workflow_enabled:boolean;
   poll_seconds:number;rights_status:string;terms_url:string;permission_note:string;status:string|null;last_error:string|null;
@@ -20,7 +21,7 @@ export function RssCard(){
       {state.isPending&&<p role="status">Завантаження стану…</p>}
       {(state.isError||toggle.isError)&&<Alert tone="danger">{errorText(state.error||toggle.error)}</Alert>}
       {state.data&&<><Switch checked={state.data.enabled} disabled={toggle.isPending} ariaLabel="Збір RSS" label={state.data.enabled?'Збір увімкнено':'Збір вимкнено'} onChange={v=>toggle.mutate(v)}/>
-        <p>{state.data.items.filter(s=>s.enabled&&s.rights_status==='allowed').length} увімкнених стрічок · {state.data.items.reduce((n,s)=>n+s.collected_count,0)} отриманих матеріалів</p>
+        <p>{quantity(state.data.items.filter(s=>s.enabled&&s.rights_status==='allowed').length,'увімкнена стрічка','увімкнені стрічки','увімкнених стрічок')} · {quantity(state.data.items.reduce((n,s)=>n+s.collected_count,0),'отриманий матеріал','отримані матеріали','отриманих матеріалів')}</p>
         <p className="note">Останній сигнал збирача: {formatDateTime(state.data.service?.heartbeat_at??null)}.</p></>}
     </div>
   </Card>;
@@ -43,7 +44,8 @@ export function RssSources(){
       <div className="stack">
         <Switch checked={s.enabled} disabled={update.isPending||s.rights_status!=='allowed'} ariaLabel={`Збір ${s.title}`} label={s.enabled?'Увімкнено':'Вимкнено'} onChange={enabled=>update.mutate({source:s,enabled})}/>
         <p className="hint rss-url">{s.feed_url}</p><p className="note">{s.permission_note}</p>
-        <dl className="facts"><div><dt>Отримано / релевантних автоматично</dt><dd>{s.collected_count} / {s.accepted_count}</dd></div><div><dt>Перевірка</dt><dd>Кожні {Math.round(s.poll_seconds/60)} хв</dd></div><div><dt>Workflow</dt><dd>{s.workflow_name}</dd></div></dl>
+        <dl className="facts"><div><dt>Отримано / прийнято правилами</dt><dd>{s.collected_count.toLocaleString('uk-UA')} / {s.accepted_count.toLocaleString('uk-UA')}</dd></div><div><dt>Перевірка</dt><dd>Кожні {Math.round(s.poll_seconds/60)} хв</dd></div><div><dt>Workflow</dt><dd>{s.workflow_name}</dd></div></dl>
+        <p className="note">Попередній відбір правилами. Після семантичної перевірки склад стрічки може відрізнятися.</p>
         <p className="note">Успішний збір: {formatDateTime(s.last_success_at)}. Наступна перевірка: {s.enabled&&state.data?.enabled&&s.workflow_enabled?formatDateTime(s.next_poll_at):'збір призупинено'}.</p>
         {s.last_error&&<Alert tone="danger">{errors[s.last_error]||s.last_error}. Повторна спроба виконується автоматично.</Alert>}
       </div>
