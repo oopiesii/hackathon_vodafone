@@ -53,7 +53,7 @@ def main():
         for width in [1440, 390]:
             for theme in ['light', 'dark']:
                 for name, path in PAGES:
-                    if selected and name != selected:
+                    if selected and name not in selected.split(','):
                         continue
                     context = browser.new_context(viewport={'width': width, 'height': 900}, color_scheme=theme,
                                                   locale='uk-UA', timezone_id='Europe/Kyiv')
