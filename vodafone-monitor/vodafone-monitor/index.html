@@ -108,6 +108,9 @@ h1{font-family:var(--pixel);font-weight:700;font-size:clamp(28px,5vw,52px);line-
 .chip{font:13px var(--body);background:var(--paper);color:var(--ink);border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);
   padding:3px 10px;cursor:pointer}
 .chip[aria-pressed="true"]{background:var(--red);color:#fff;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+.filterbar{display:flex;flex-wrap:wrap;gap:8px 20px;margin-bottom:12px}
+.chipgroup{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.chipgroup-label{font-family:var(--pixel);font-size:12px;color:var(--muted);white-space:nowrap}
 table{width:100%;border-collapse:collapse;font-size:13px;min-width:720px}
 th{font-family:var(--pixel);font-weight:600;font-size:14px;text-align:left;background:var(--red);color:#fff;padding:6px 8px}
 td{padding:7px 8px;border-bottom:1px dotted var(--red);vertical-align:top}
@@ -258,9 +261,18 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
 <section class="win" aria-labelledby="listTitle">
   <div class="bar"><span id="listTitle">Усі негативні згадки</span></div>
   <div class="pane">
-    <div class="chips" id="chips" role="group" aria-label="Фільтр за темою"></div>
+    <div class="filterbar">
+      <div class="chipgroup"><span class="chipgroup-label">Фільтр за темою:</span>
+        <div class="chips" id="chips" role="group" aria-label="Фільтр за темою"></div>
+      </div>
+      <div class="chipgroup"><span class="chipgroup-label">Сортувати за:</span>
+        <div class="chips" id="sortChips" role="group" aria-label="Сортування"></div>
+      </div>
+    </div>
     <div class="scroll"><table>
-      <thead><tr><th>Дата</th><th>Рівень</th><th>Тема</th><th>Що сталося</th><th>Джерело</th></tr></thead>
+      <thead><tr>
+        <th>Дата</th><th>Рівень</th><th>Тема</th><th>Що сталося</th><th>Джерело</th>
+      </tr></thead>
       <tbody id="rows"></tbody>
     </table></div>
   </div>
@@ -332,7 +344,7 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
 </section>
 </div>
 
-<footer>зроблено в червоно-білих тонах · знімок 19.09.2026</footer>
+<footer>зроблено в <span id="tone">червоно-білих</span> тонах · знімок 19.09.2026</footer>
 </div>
 
 <script src="data.js"></script>
@@ -387,8 +399,23 @@ donut("donutSrc","legSrc",["Telegram","ЗМІ","Сайт Vodafone","Threads","In
 // list + chips
 let active="all";
 const SEV={h:"Критично",m:"Середній",l:"Низький"};
+const SEV_W={h:3,m:2,l:1};
+const SORT_DEFAULT_DIR={d:"desc",sev:"desc",cat:"asc"};
+let sortState={key:"d",dir:"desc"};
+function sortCompare(key,dir){
+  const mul=dir==="asc"?1:-1;
+  return (a,b)=>{
+    let av,bv;
+    if(key==="sev"){av=SEV_W[a.sev];bv=SEV_W[b.sev]}
+    else if(key==="cat"){av=CATS[a.cat];bv=CATS[b.cat]}
+    else{av=a.d;bv=b.d}
+    if(av<bv)return -1*mul;
+    if(av>bv)return 1*mul;
+    return 0;
+  };
+}
 function render(){
-  const list=mentions.filter(m=>active==="all"||m.cat===active);
+  const list=mentions.filter(m=>active==="all"||m.cat===active).sort(sortCompare(sortState.key,sortState.dir));
   document.getElementById("rows").innerHTML=list.length?list.map(m=>`<tr>
     <td>${m.dApprox?"≈ ":""}${fmt(m.d)}</td>
     <td><span class="sev ${m.sev}">${SEV[m.sev]}</span></td>
@@ -397,6 +424,23 @@ function render(){
     <td><a href="${m.url}" target="_blank" rel="noopener">${m.site}</a><br><span class="note">${m.src}</span></td></tr>`).join("")
     :`<tr><td colspan="5">У цій темі згадок немає. Оберіть «Усі», щоб побачити решту.</td></tr>`;
 }
+const SORT_LABELS={d:"Дата",sev:"Рівень",cat:"Тема"};
+const sortChips=document.getElementById("sortChips");
+function renderSortChips(){
+  sortChips.innerHTML=Object.keys(SORT_LABELS).map(k=>{
+    const isActive=sortState.key===k;
+    const arrow=isActive?(sortState.dir==="asc"?" ▲":" ▼"):"";
+    return `<button class="chip" type="button" data-sort="${k}" aria-pressed="${isActive}">${SORT_LABELS[k]}${arrow}</button>`;
+  }).join("");
+}
+sortChips.addEventListener("click",e=>{
+  const b=e.target.closest(".chip");if(!b)return;
+  const key=b.dataset.sort;
+  if(sortState.key===key)sortState.dir=sortState.dir==="asc"?"desc":"asc";
+  else sortState={key,dir:SORT_DEFAULT_DIR[key]};
+  renderSortChips();render();
+});
+renderSortChips();
 const chipData=[["all","Усі ("+mentions.length+")"],...Object.keys(CATS).map(k=>[k,`${CATS[k]} (${byCat[k]||0})`])];
 const chips=document.getElementById("chips");
 chips.innerHTML=chipData.map(([k,l])=>`<button class="chip" type="button" data-k="${k}" aria-pressed="${k==="all"}">${l}</button>`).join("");
@@ -407,11 +451,21 @@ render();
 document.getElementById("filtered").innerHTML=filtered.map(f=>`<li><b>${f.why}.</b> ${esc(f.txt)} <a href="${f.url}" target="_blank" rel="noopener">джерело</a></li>`).join("");
 
 // theme toggle
+function isDarkNow(){
+  const cur=document.documentElement.getAttribute("data-theme");
+  return cur?cur==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
+}
+function updateTone(){
+  document.getElementById("tone").textContent=isDarkNow()?"червоно-чорних":"червоно-білих";
+}
 document.getElementById("themeBtn").addEventListener("click",()=>{
-  const r=document.documentElement,cur=r.getAttribute("data-theme");
-  const dark=cur?cur==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
-  r.setAttribute("data-theme",dark?"light":"dark");
+  document.documentElement.setAttribute("data-theme",isDarkNow()?"light":"dark");
+  updateTone();
 });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{
+  if(!document.documentElement.getAttribute("data-theme"))updateTone();
+});
+updateTone();
 
 // tabs
 const tabBtns=document.querySelectorAll(".tabbtn");
@@ -555,9 +609,30 @@ function addMsg(role,html){
   chatlog.appendChild(div);
   chatlog.scrollTop=chatlog.scrollHeight;
 }
+// Мовонезалежна (укр./рос./англ.) евристика: без словника не відрізнити "слово" від
+// вигаданого набору літер напевно, тож перевіряємо ознаки, спільні для реальних слів
+// у цих алфавітах — наявність голосних і відсутність довгих приголосних/однакових серій.
+const VOWELS="aeiouyаеєиіїоуюя";
+function looksLikeWord(tok){
+  const t=tok.toLowerCase();
+  if(t.length<2)return false;
+  if(![...t].some(c=>VOWELS.includes(c)))return false;
+  if(/(.)\1{3,}/.test(t))return false;
+  if(new RegExp(`[^${VOWELS}\\d\\s]{5,}`).test(t))return false;
+  return true;
+}
+function isInvalidQuery(text){
+  const tokens=text.trim().match(/[a-zа-яіїєґ']+/gi)||[];
+  if(tokens.length===0)return true;
+  return !tokens.some(looksLikeWord);
+}
 function ask(text){
   if(!text.trim())return;
   addMsg("user",esc(text));
+  if(isInvalidQuery(text)){
+    addMsg("bot",`<h4>Некоректний запит</h4><p>Не вдалося розпізнати текст питання «${esc(text)}». Напишіть словами, наприклад «зроби звіт» або «головні ризики».</p>`);
+    return;
+  }
   addMsg("bot",answerFor(classifyIntent(text),text));
 }
 document.getElementById("chatform").addEventListener("submit",e=>{
