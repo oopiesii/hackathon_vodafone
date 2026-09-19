@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Монітор бренду Vodafone Україна</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --red:#E60000; --red-deep:#9E0000; --pink:#FFE1E1; --pink-2:#FFC2C2;
+  --paper:#FFFFFF; --ink:#000000; --muted:#6B3A3A; --bg-a:#FFFFFF; --bg-b:#FFE9E9;
+  --hi:#FFFFFF; --lo:#9E0000; --ok:#1E7A1E;
+  --pixel:"Pixelify Sans","Courier New",monospace;
+  --body:Verdana,Tahoma,"DejaVu Sans",Geneva,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#1C0404; --ink:#FFFFFF; --muted:#F0B5B5; --pink:#3A0808; --pink-2:#5A1010;
+    --bg-a:#000000; --bg-b:#1A0000; --hi:#FF5A5A; --lo:#4A0000; --red-deep:#FF6B6B; --ok:#6FD66F;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#1C0404; --ink:#FFFFFF; --muted:#F0B5B5; --pink:#3A0808; --pink-2:#5A1010;
+  --bg-a:#000000; --bg-b:#1A0000; --hi:#FF5A5A; --lo:#4A0000; --red-deep:#FF6B6B; --ok:#6FD66F;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:var(--body); font-size:14px; line-height:1.5; color:var(--ink);
+  background-color:var(--bg-a);
+  background-image:
+    linear-gradient(45deg,var(--bg-b) 25%,transparent 25%,transparent 75%,var(--bg-b) 75%),
+    linear-gradient(45deg,var(--bg-b) 25%,transparent 25%,transparent 75%,var(--bg-b) 75%);
+  background-size:16px 16px; background-position:0 0,8px 8px;
+}
+a{color:var(--red)} a:hover{background:var(--red);color:#fff}
+a:focus-visible,button:focus-visible{outline:3px dashed var(--red);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding:18px 14px 40px}
+
+/* window chrome */
+.win{background:var(--paper);border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);
+  box-shadow:4px 4px 0 var(--red);margin-bottom:22px}
+.bar{background:var(--red);color:#fff;display:flex;align-items:center;justify-content:space-between;
+  padding:3px 6px 3px 10px;font-family:var(--pixel);font-size:15px;gap:8px}
+.bar .btns{display:flex;gap:3px}
+.bar .btns span{width:18px;height:16px;background:#fff;color:var(--red);font:700 11px/14px var(--body);
+  text-align:center;border:1px solid;border-color:#fff #600 #600 #fff}
+.pane{padding:14px 16px}
+
+/* masthead */
+.mast{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
+.logo{width:74px;height:74px;border-radius:50%;background:var(--red);position:relative;
+  box-shadow:inset -6px -6px 0 var(--red-deep)}
+.logo:after{content:"";position:absolute;left:24px;top:14px;width:30px;height:40px;background:#fff;
+  border-radius:60% 60% 50% 50%/70% 70% 40% 40%;transform:rotate(-12deg)}
+h1{font-family:var(--pixel);font-weight:700;font-size:clamp(28px,5vw,52px);line-height:1;margin:0;color:var(--red);
+  text-shadow:3px 3px 0 var(--pink-2)}
+.sub{margin:6px 0 0;color:var(--muted);max-width:70ch}
+.sources{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.src{font-size:12px;padding:1px 8px;border:1px solid var(--red);background:var(--paper)}
+.src.on{background:var(--red);color:#fff}
+.src.off{text-decoration:line-through;color:var(--muted);border-style:dashed}
+
+.ticker{overflow:hidden;white-space:nowrap;background:var(--ink);color:var(--paper);font-family:var(--pixel);
+  font-size:15px;padding:4px 0;border-top:2px solid var(--red);border-bottom:2px solid var(--red)}
+.ticker span{display:inline-block;padding-left:100%;animation:run 55s linear infinite}
+@keyframes run{to{transform:translateX(-100%)}}
+@media (prefers-reduced-motion:reduce){.ticker span{animation:none;padding-left:10px}.blink{animation:none!important}}
+
+/* critical */
+.crit .bar{background:repeating-linear-gradient(45deg,var(--red) 0 12px,#000 12px 24px)}
+.crit .bar b{background:var(--red);padding:0 6px}
+.blink{animation:bl 1s steps(1) infinite}@keyframes bl{50%{opacity:0}}
+.critgrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px}
+.bignum{font-family:var(--pixel);font-size:clamp(56px,9vw,104px);line-height:.9;color:var(--red);margin:4px 0}
+.bignum small{font-size:.3em;color:var(--ink);display:block;margin-top:6px;line-height:1.2}
+.crit h2{font-family:var(--pixel);font-size:22px;margin:0 0 6px;line-height:1.2}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:10px 0;font-size:13px}
+.facts dt{color:var(--muted)} .facts dd{margin:0}
+.reacts{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0}
+.reacts span{border:1px solid var(--pink-2);padding:0 6px;font-size:13px}
+.reacts span.neg{border-color:var(--red);background:var(--pink);font-weight:700}
+.todo{background:var(--pink);border:2px dashed var(--red);padding:10px 12px}
+.todo h3{font-family:var(--pixel);font-size:17px;margin:0 0 6px;color:var(--red)}
+.todo ol{margin:0;padding-left:20px}.todo li{margin-bottom:4px}
+.now{margin-top:14px;border-top:2px solid var(--red);padding-top:10px;font-size:13px}
+.now b{font-family:var(--pixel);font-size:15px;color:var(--red)}
+.status{display:inline-block;font-size:12px;padding:0 6px;border:1px solid}
+.status.done{color:var(--ok);border-color:var(--ok)} .status.act{color:#fff;background:var(--red);border-color:var(--red)}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:22px}
+.stat{background:var(--paper);border:2px solid var(--red);padding:10px 12px}
+.stat .n{font-family:var(--pixel);font-size:40px;line-height:1;color:var(--red)}
+.stat .l{font-size:12px;color:var(--muted)}
+.charts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.6fr);gap:18px}
+.chart h3{font-family:var(--pixel);font-size:16px;margin:0 0 8px}
+.legend{list-style:none;padding:0;margin:8px 0 0;font-size:12px}
+.legend li{display:flex;align-items:center;gap:6px;margin:2px 0}
+.legend i{width:12px;height:12px;display:inline-block;border:1px solid var(--ink)}
+.scroll{overflow-x:auto}
+.note{font-size:12px;color:var(--muted);margin:6px 0 0}
+
+/* list */
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chip{font:13px var(--body);background:var(--paper);color:var(--ink);border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);
+  padding:3px 10px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--red);color:#fff;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:720px}
+th{font-family:var(--pixel);font-weight:600;font-size:14px;text-align:left;background:var(--red);color:#fff;padding:6px 8px}
+td{padding:7px 8px;border-bottom:1px dotted var(--red);vertical-align:top}
+tr:nth-child(even) td{background:var(--pink)}
+.sev{font-family:var(--pixel);font-size:13px;white-space:nowrap}
+.sev.h{color:#fff;background:var(--red);padding:0 5px}
+.sev.m{color:var(--red);border:1px solid var(--red);padding:0 5px}
+.sev.l{color:var(--muted)}
+.tag{font-size:11px;border:1px solid var(--red);padding:0 4px;white-space:nowrap}
+td.what{max-width:44ch}
+
+.filt li{margin-bottom:8px}.filt b{color:var(--red)}
+.how{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.how h3{font-family:var(--pixel);font-size:17px;margin:0 0 6px;color:var(--red)}
+.how p,.how li{font-size:13px;max-width:62ch}
+.how ul{padding-left:18px;margin:0}
+.asm{background:var(--pink);border-left:4px solid var(--red);padding:2px 8px;display:block;margin:4px 0}
+footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--muted)}
+.counter{display:inline-block;background:#000;color:#FF3B3B;padding:1px 6px;letter-spacing:2px;border:2px inset #888}
+.theme{font:12px var(--body);background:var(--paper);color:var(--ink);border:1px solid var(--red);cursor:pointer;padding:2px 8px}
+
+@media (max-width:900px){
+  .critgrid,.charts,.how{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:520px){.mast{grid-template-columns:1fr}.logo{width:52px;height:52px}.logo:after{left:17px;top:10px;width:20px;height:28px}}
+</style>
+</head>
+<body>
+<div class="ticker" aria-hidden="true"><span id="tick"></span></div>
+<div class="wrap">
+
+<!-- MASTHEAD -->
+<section class="win">
+  <div class="bar"><span>vodafone_monitor.exe</span>
+    <div class="btns"><button class="theme" id="themeBtn" type="button">Тема</button><span>_</span><span>□</span><span>×</span></div></div>
+  <div class="pane mast">
+    <div class="logo" aria-hidden="true"></div>
+    <div>
+      <h1>Монітор бренду Vodafone Україна</h1>
+      <p class="sub">Скарги на мережу, інтернет і сервіси Vodafone у соцмережах та ЗМІ. Знімок зібрано 19.09.2026 з відкритих джерел; кожна згадка нижче має посилання на оригінал.</p>
+      <div class="sources" id="sources"></div>
+    </div>
+  </div>
+</section>
+
+<!-- CRITICAL -->
+<section class="win crit" aria-labelledby="critTitle">
+  <div class="bar"><span><b class="blink">!!!</b> Найкритичніша ситуація у знімку</span><div class="btns"><span>×</span></div></div>
+  <div class="pane critgrid">
+    <div>
+      <h2 id="critTitle">Збій після нічного обстрілу Києва: домашній інтернет, поповнення рахунку, контакт-центр</h2>
+      <div class="bignum">4,0×<small>охоплення посту проти медіани каналу: 29,6 тис. переглядів при звичайних ~7,4 тис.</small></div>
+      <dl class="facts">
+        <dt>Коли</dt><dd>2 липня 2026, ранок. Пост оновлено позначкою «робота всіх сервісів відновлена»</dd>
+        <dt>Де</dt><dd><a href="https://t.me/VFUkraine/1429" target="_blank" rel="noopener">t.me/VFUkraine/1429</a> — офіційний Telegram-канал, 18 тис. підписників</dd>
+        <dt>Відлуння</dt><dd><a href="https://thepage.ua/ua/news/problemi-zi-zvyazkom-vodafone-pislya-ataki-na-kiyiv-2-lipnya-2026-sho-vidomo" target="_blank" rel="noopener">The Page</a> та <a href="https://www.ukr.net/news/details/technologies/118279815.html" target="_blank" rel="noopener">UKR.NET</a> того ж дня</dd>
+        <dt>Статус</dt><dd><span class="status done">Вирішено</span></dd>
+      </dl>
+      <div class="reacts" aria-label="Реакції під постом">
+        <span>❤ 93</span><span>🙏 50</span><span>❤‍🔥 6</span><span>👍 5</span>
+        <span class="neg">🤣 4</span><span class="neg">😁 3</span><span class="neg">💔 2</span><span>🤩 1</span><span class="neg">😈 1</span>
+      </div>
+      <p class="note">Негативні/іронічні реакції: 10 із 165 (6%). Аудиторія переважно підтримує — причина зовнішня (обстріл), а не провал оператора. Тон відповіді має це враховувати.</p>
+    </div>
+    <div>
+      <div class="todo">
+        <h3>Що з цим робити</h3>
+        <ol>
+          <li>Закріпити пост зі статусом у Telegram і дублювати оновлення кожні 60–90 хв, доки сервіси не повернуться.</li>
+          <li>Надіслати ЗМІ, що вже пишуть (The Page, UKR.NET), короткий коментар: що саме не працює і що мобільний зв'язок доступний.</li>
+          <li>Дати обхідний шлях: поповнення через банківські застосунки, звернення через @VFUkraineBot замість 111.</li>
+          <li>Після відновлення — окремий пост «що сталося», щоб закрити тему, а не лише правка старого.</li>
+        </ol>
+      </div>
+      <div class="now">
+        <b>Що зараз (19.09):</b> активних масових збоїв у знімку не виявлено. Найсвіжіший мережевий сигнал —
+        <a href="https://www.vodafone.ua/news" target="_blank" rel="noopener">демонтаж базової станції в Обухові</a> на вимогу орендодавця (16.09). <span class="status act">Відкрито</span>
+        Очікуйте локальних скарг на покриття з Обухова — варто підготувати відповідь заздалегідь.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats" id="stats"></div>
+
+<section class="win">
+  <div class="bar"><span>Статистика знімка</span><div class="btns"><span>×</span></div></div>
+  <div class="pane charts">
+    <div class="chart"><h3>Негатив за темою</h3><div id="donutCat"></div><ul class="legend" id="legCat"></ul></div>
+    <div class="chart"><h3>Звідки згадки</h3><div id="donutSrc"></div><ul class="legend" id="legSrc"></ul></div>
+    <div class="chart"><h3>Перегляди постів @VFUkraine</h3>
+      <div class="scroll"><div id="bars"></div></div>
+      <p class="note">34 пости, червень–вересень 2026. Пунктир — медіана 7,4 тис. Пост, що перевищує медіану втричі, піднімає тривогу. Два найсвіжіші пости (1471–1472) виключено: перегляди ще набираються.</p>
+    </div>
+  </div>
+</section>
+
+<!-- LIST -->
+<section class="win" aria-labelledby="listTitle">
+  <div class="bar"><span id="listTitle">Усі негативні згадки</span><div class="btns"><span>×</span></div></div>
+  <div class="pane">
+    <div class="chips" id="chips" role="group" aria-label="Фільтр за темою"></div>
+    <div class="scroll"><table>
+      <thead><tr><th>Дата</th><th>Рівень</th><th>Тема</th><th>Що сталося</th><th>Джерело</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- FILTERED -->
+<section class="win">
+  <div class="bar"><span>Відсіяно як шум — і чому</span><div class="btns"><span>×</span></div></div>
+  <div class="pane">
+    <p class="note" style="margin-top:0">Кожна з цих згадок пройшла б простий фільтр «Vodafone + збій/негатив». Без перевірки вони дали б хибну тривогу.</p>
+    <ul class="filt" id="filtered"></ul>
+  </div>
+</section>
+
+<!-- HOW -->
+<section class="win">
+  <div class="bar"><span>Як це працює, затримка і припущення</span><div class="btns"><span>×</span></div></div>
+  <div class="pane how">
+    <div>
+      <h3>Що в знімку реальне, а що ні</h3>
+      <ul>
+        <li>Усі 8 згадок і 5 відсіяних — реальні матеріали з відкритих джерел, зібрані 19.09.2026 вручну через вебпошук і публічний перегляд Telegram (t.me/s/…).</li>
+        <li>Перегляди та реакції — фактичні числа з публічної сторінки каналу на момент збору.</li>
+        <li><b>Threads, Instagram, X не підключені.</b> Їх неможливо читати зі сторінки без API-ключів, тому в цьому знімку з них 0 згадок — це не означає, що там тихо.</li>
+        <li>Коментарі під постами Telegram у публічному перегляді не видно, а дизлайків у Telegram немає. Тому «гарячість» поста міряємо аномалією переглядів і часткою негативних реакцій (🤣😁💔😈👎😡).</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Затримка</h3>
+      <p>Цей дашборд — статичний знімок: затримка дорівнює часу від останнього збору (19.09.2026). Для роботи наживо потрібен окремий збирач:</p>
+      <ul>
+        <li>Telegram (Telethon / MTProto, підписка на канали): <span class="asm">припущення: 1–2 хв від посту до тривоги. Перевірка: логувати час публікації й час спрацювання на 2 тижнях даних.</span></li>
+        <li>Threads API (пошук за ключовими словами), X API: <span class="asm">припущення: 5–15 хв, обмежено лімітами запитів. Перевірка: ліміти з документації + тест на збої конкурентів.</span></li>
+        <li>Instagram: лише хештеги через Graph API, <span class="asm">припущення: від 1 год. Найслабше джерело для раннього виявлення.</span></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Хибні спрацювання і їхня ціна</h3>
+      <p>Типові пастки, які ми вже бачимо в реальних даних: сумні реакції під траурним постом, стара новина з новою датою в пошуковику, згадка Vodafone поруч із конкурентом, тезки (Vodafone Group, Vodafone Germany).</p>
+      <p><span class="asm">Припущення: одна хибна тривога коштує аналітику 15–20 хв на перевірку і не більше. Якщо тривога йде далі до PR-команди — до 1 год кількох людей. Перевірка: вести журнал «тривога → вердикт → витрачений час» перший місяць.</span></p>
+    </div>
+    <div>
+      <h3>Як згадка стає тривогою</h3>
+      <ul>
+        <li>Відсікаємо тезок: у тексті має бути Україна, українське місто, 111, My Vodafone або кирилиця «Водафон».</li>
+        <li>Відсікаємо старе: беремо дату з самої сторінки, а не з пошуковика.</li>
+        <li>Ловимо згадки без назви бренду: «оранжевий… ні, червоний оператор», «050/066/095/099 не ловить», «мій оператор ліг».</li>
+        <li>Тривога: ≥3× медіани переглядів <em>або</em> <span class="asm">припущення: ≥10 скарг з одного міста за 15 хв. Поріг треба підібрати на історії збоїв 2024–2026.</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer>Відвідувачів: <span class="counter">000419</span> · зроблено в червоно-білих тонах · знімок 19.09.2026</footer>
+</div>
+
+<script src="data.js"></script>
+<script>
+const fmt=d=>{const [y,m,dd]=d.split("-");return `${dd}.${m}.${y}`};
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+// sources strip
+const srcState=[["Telegram","on"],["ЗМІ","on"],["Сайт Vodafone","on"],["Threads","off"],["Instagram","off"],["X","off"]];
+document.getElementById("sources").innerHTML=srcState.map(([n,s])=>`<span class="src ${s}" title="${s==="on"?"у знімку":"не підключено"}">${n}</span>`).join("");
+
+// ticker
+document.getElementById("tick").textContent=mentions.map(m=>`▶ ${fmt(m.d)} · ${m.what}`).join("     ");
+
+// stats
+const high=mentions.filter(m=>m.sev==="h").length;
+const total=mentions.length+filtered.length;
+document.getElementById("stats").innerHTML=[
+ [mentions.length,"негативних згадок у знімку"],
+ [high,"критична (охоплення ≥3× норми)"],
+ [Math.round(filtered.length/total*100)+"%","сирих збігів відсіяно як шум"],
+ ["4,0×","пікове охоплення посту"]
+].map(([n,l])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+
+// donut
+function donut(el,leg,data,colors){
+  const tot=data.reduce((a,[,v])=>a+v,0),R=54,C=2*Math.PI*R;let off=0;
+  const segs=data.filter(([,v])=>v>0).map(([k,v])=>{const len=v/tot*C;const s=`<circle r="${R}" cx="70" cy="70" fill="none" stroke="${colors[k]}" stroke-width="26" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"/>`;off+=len;return s}).join("");
+  document.getElementById(el).innerHTML=`<svg viewBox="0 0 140 140" width="160" height="160" role="img" aria-label="Кругова діаграма"><circle r="${R}" cx="70" cy="70" fill="none" stroke="var(--red)" stroke-width="28"/><circle r="${R}" cx="70" cy="70" fill="none" stroke="var(--paper)" stroke-width="24"/>${segs}<text x="70" y="78" text-anchor="middle" font-family="Pixelify Sans, monospace" font-size="26" fill="var(--ink)">${tot}</text></svg>`;
+  document.getElementById(leg).innerHTML=data.map(([k,v])=>`<li><i style="background:${colors[k]}"></i>${CATS[k]||k} — ${v}${v===0?" (не підключено)":""}</li>`).join("");
+}
+const byCat={};mentions.forEach(m=>byCat[m.cat]=(byCat[m.cat]||0)+1);
+donut("donutCat","legCat",Object.keys(CATS).map(k=>[k,byCat[k]||0]),CATCOL);
+const bySrc={};mentions.forEach(m=>bySrc[m.src]=(bySrc[m.src]||0)+1);
+donut("donutSrc","legSrc",["Telegram","ЗМІ","Сайт Vodafone","Threads","Instagram","X"].map(k=>[k,bySrc[k]||0]),SRCCOL);
+
+// bars
+(function(){
+  const W=Math.max(520,views.length*17),H=180,pad=24,max=32,bw=(W-pad*2)/views.length;
+  const y=v=>H-pad-(v/max)*(H-pad*2);
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Перегляди постів Telegram-каналу, пік на пості 1429">`;
+  views.forEach(([id,v],i)=>{const hot=v>=MEDIAN*3;const x=pad+i*bw;
+    s+=`<a href="https://t.me/VFUkraine/${id}" target="_blank"><rect x="${x+1}" y="${y(v)}" width="${bw-3}" height="${H-pad-y(v)}" fill="${hot?"var(--red)":"var(--pink-2)"}" stroke="${hot?"var(--ink)":"none"}"><title>Пост ${id}: ${v} тис. переглядів</title></rect></a>`;
+    if(hot)s+=`<text x="${x+bw/2}" y="${y(v)-5}" text-anchor="middle" font-family="Pixelify Sans, monospace" font-size="13" fill="var(--red)">29,6K</text>`});
+  s+=`<line x1="${pad}" x2="${W-pad}" y1="${y(MEDIAN)}" y2="${y(MEDIAN)}" stroke="var(--ink)" stroke-dasharray="4 3"/>`;
+  s+=`<text x="${W-pad}" y="${y(MEDIAN)-4}" text-anchor="end" font-size="11" fill="var(--ink)">медіана 7,4K</text>`;
+  s+=`<line x1="${pad}" x2="${W-pad}" y1="${H-pad}" y2="${H-pad}" stroke="var(--red)" stroke-width="2"/>`;
+  s+=`<text x="${pad}" y="${H-6}" font-size="11" fill="var(--muted)">червень</text><text x="${W-pad}" y="${H-6}" text-anchor="end" font-size="11" fill="var(--muted)">вересень</text></svg>`;
+  document.getElementById("bars").innerHTML=s;
+})();
+
+// list + chips
+let active="all";
+const SEV={h:"Критично",m:"Середній",l:"Низький"};
+function render(){
+  const list=mentions.filter(m=>active==="all"||m.cat===active);
+  document.getElementById("rows").innerHTML=list.length?list.map(m=>`<tr>
+    <td>${m.dApprox?"≈ ":""}${fmt(m.d)}</td>
+    <td><span class="sev ${m.sev}">${SEV[m.sev]}</span></td>
+    <td><span class="tag">${CATS[m.cat]}</span></td>
+    <td class="what">${esc(m.what)}</td>
+    <td><a href="${m.url}" target="_blank" rel="noopener">${m.site}</a><br><span class="note">${m.src}</span></td></tr>`).join("")
+    :`<tr><td colspan="5">У цій темі згадок немає. Оберіть «Усі», щоб побачити решту.</td></tr>`;
+}
+const chipData=[["all","Усі ("+mentions.length+")"],...Object.keys(CATS).map(k=>[k,`${CATS[k]} (${byCat[k]||0})`])];
+const chips=document.getElementById("chips");
+chips.innerHTML=chipData.map(([k,l])=>`<button class="chip" type="button" data-k="${k}" aria-pressed="${k==="all"}">${l}</button>`).join("");
+chips.addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;active=b.dataset.k;
+  chips.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",c===b));render()});
+render();
+
+document.getElementById("filtered").innerHTML=filtered.map(f=>`<li><b>${f.why}.</b> ${esc(f.txt)} <a href="${f.url}" target="_blank" rel="noopener">джерело</a></li>`).join("");
+
+// theme toggle
+document.getElementById("themeBtn").addEventListener("click",()=>{
+  const r=document.documentElement,cur=r.getAttribute("data-theme");
+  const dark=cur?cur==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
+  r.setAttribute("data-theme",dark?"light":"dark");
+});
+</script>
+</body>
+</html>
