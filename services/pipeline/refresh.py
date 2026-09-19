@@ -28,7 +28,8 @@ def apply_refresh_requests(db, service):
                         # last_success_at is untouched: scheduling is not a successful observation.
                         conn.execute('update raw.source_state set last_polled_at=null where source_id=any(%s)',(ready,))
                         conn.execute('''update raw.watch_state w set next_check_at=now() from raw.items i
-                            where w.item_id=i.id and i.source_id=any(%s) and w.state in ('active','cooling','sleeping','blocked')''',(ready,))
+                            where w.item_id=i.id and i.source_id=any(%s)
+                            and (w.state in ('active','cooling','sleeping') or (w.state='blocked' and w.next_check_at<=now()))''',(ready,))
                 else:
                     sources=conn.execute('''select s.id,st.status,st.next_poll_at from core.sources s
                         join core.rss_sources r on r.source_id=s.id left join raw.rss_state st on st.source_id=s.id

@@ -1,0 +1,26 @@
+# I6: незалежний огляд релізу й ручного refresh
+
+Обсяг: `deploy/night-release.py`, `.sh`, `deploy/compose.yml`, bootstrap/ролі analyst, `services/pipeline/{refresh,telegram,rss,watch}.py`, admin refresh API. Перевірено реалізацію після `bc1eeb4` та `b1bdc51`, окремо від UI. Production не змінено, collectors не перезапускалися, нічний дозвіл на їхнє перезапускання не використаний.
+
+Рішення security review: **Pass after fixes**. Ризик нових виправлень — **Low**; операційне обмеження офлайн-черги нижче — **Medium**. Використано [security-audit](../.codex/skills/security-audit/SKILL.md), ручний code review і regression simulations.
+
+## Підтверджене й виправлене
+
+1. **High — first-deploy rollback analyst не відновлював початкову відсутність сервісу.** Старий код лише зупиняв новий контейнер, а наступний `running()` сприймав будь-який наявний контейнер як запущений. Наступний rollback міг повернути відхилений analyst як «попередній». Маніфест тепер фіксує image/running/start time. Новий контейнер видаляється, попередньо зупинений відновлюється через `compose create` без запуску, попередньо запущений повертається на старий image.
+2. **High — успішний API приховував несправний worker.** Реліз API+analyst міг отримати `verified`, навіть коли analyst впав. Тепер кожен обраний сервіс повинен використовувати очікуваний image, бути запущеним і healthy за наявності Docker healthcheck. Python workers додатково мають підтвердити heartbeat після часу запуску контейнера. Probe виконується всередині конкретного контейнера; DSN не потрапляє в аргументи чи журнали.
+3. **Medium — manifest міг лишитися `rolled_back` при невдалій перевірці сусіднього сервісу.** Статус тепер проходить `rolling_back` → перевірки → `rolled_back`; будь-який збій відновлення/перевірки зберігає `rollback_failed`.
+4. **Medium — ручний refresh скорочував explicit backoff заблокованих Telegram watches.** `next_check_at=now()` застосовувався до всіх `blocked`, включно з `DiscussionUnavailable` та іншими тимчасовими помилками. Майбутній blocked deadline тепер зберігається; активні/cooling/sleeping перевірки можна прискорити. Account-level FloodWait і RSS Retry-After були й залишилися окремими перевірками.
+5. **Захист від зайвих перезапусків.** Перед і після переключення порівнюються image/running/start time необраних сервісів. Усі Compose up/create мають явні service names та `--no-deps --no-build`. Rollback зберігає інші сервіси в їхньому поточному стані: давній маніфест не вимагає відкотити окремий пізніший реліз processor.
+
+## Перевірки
+
+- **8 unit simulations** без справжніх Docker/network викликів: перший analyst rollback, початково зупинений сервіс, відмова сусіднього health, окремий пізніший реліз іншого worker, unhealthy/stale selected worker, неочікуваний restart, Compose scope/no-deps, синтаксис probe та відсутність DSN.
+- **4 integration refresh tests на `ufv_checks`**, разом із цими simulations: **12 passed**. Перевірено admin/analyst/viewer, idempotency/audit, двосекундний pickup, account FloodWait, RSS Retry-After/lease, майбутній blocked-watch deadline та прискорення активного watch. Справжній Telegram не підключався.
+- API/shared build, Python compilation, `git diff --check`; secret-pattern scan змінених deployment-файлів.
+
+## Чинні межі
+
+- Офлайн collector не виконує watchdog своєї черги: `pending` може чекати довше п'яти хвилин, а POST повертає той самий запит. Це не успішне оновлення. Спостереження передано власнику API для окремого явного offline/deferred стану; цей огляд не змінює його API-файли паралельно.
+- Позначка `running` означає, що запит підхоплено і джерела поставлено в чергу. Фактичне опитування окремого Telegram-джерела залежить від поточної черги акаунта; ці 2–5 секунд не є SLA отримання матеріалів.
+- Additive migrations/нові ролі не видаляються під час image rollback. Старі images мають зберігати сумісність із доданою схемою; migrations/grants застосовуються перед switch. Runtime-секрети не копіюються у Git чи release manifest.
+- Ключі моделей не вмикалися; логіка collector restart guard збережена. Аварійний rollback уже переключеного collector повертає попередній image; він не є дозволом на новий функціональний реліз після нічного вікна.

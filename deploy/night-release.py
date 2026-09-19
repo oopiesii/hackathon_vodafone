@@ -22,9 +22,56 @@ def run(args, **kwargs):
 def capture(args):
     return subprocess.check_output(args,cwd=ROOT,text=True).strip()
 
+def container_state(service):
+    # Never inspect Config.Env: it contains runtime credentials.
+    template='{"image":"{{.Image}}","running":{{.State.Running}},"started_at":"{{.State.StartedAt}}","health":"{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}"}'
+    result=subprocess.run(['docker','inspect',f'ufv-{service}-1','--format',template],text=True,capture_output=True)
+    return json.loads(result.stdout) if result.returncode==0 else None
+
+def identity(state):
+    return (state['image'],state['running'],state['started_at']) if state else None
+
 def running(service):
-    result=subprocess.run(['docker','inspect',f'ufv-{service}-1','--format','{{.Image}}'],text=True,capture_output=True)
-    return result.stdout.strip() if result.returncode==0 else None
+    state=container_state(service)
+    return state['image'] if state and state['running'] else None
+
+def worker_ready(service, started_at):
+    if service=='api':return True
+    # Code is fixed and the DSN stays inside the selected container's environment.
+    script='''import os,sys,psycopg
+checks={'processor':('core.service_status','processor'),'collector':('raw.service_status','collector-telegram'),'collector-rss':('raw.service_status','collector-rss'),'analyst':('core.analyst_state',None)}
+try:
+ table,name=checks[sys.argv[1]]
+ with psycopg.connect(os.environ['DATABASE_URL'],connect_timeout=3) as conn:
+  q="select 1 from "+table+" where heartbeat_at>=%s::timestamptz and heartbeat_at>now()-interval '90 seconds'"
+  args=[sys.argv[2]]
+  if name is not None:q+=' and name=%s';args.append(name)
+  sys.exit(0 if conn.execute(q,args).fetchone() else 1)
+except Exception:sys.exit(1)
+'''
+    try:
+        return subprocess.run(['docker','exec',f'ufv-{service}-1','python','-c',script,service,started_at],
+                              stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=8).returncode==0
+    except subprocess.TimeoutExpired:
+        return False
+
+def verify_services(images):
+    expected={service:capture(['docker','image','inspect',image,'--format','{{.Id}}']) for service,image in images.items()}
+    for _ in range(30):
+        ready=True
+        for service,image_id in expected.items():
+            state=container_state(service)
+            if not state or not state['running'] or state['image']!=image_id or state['health'] not in ('none','healthy'):
+                ready=False;continue
+            if not worker_ready(service,state['started_at']):ready=False
+        if ready:return
+        time.sleep(2)
+    raise RuntimeError('selected_services_not_ready')
+
+def verify_untouched(before):
+    for service,state in before.items():
+        if identity(container_state(service))!=identity(state):
+            raise RuntimeError('unrequested_service_changed_'+service)
 
 def save(path, data):
     temporary=path.with_suffix('.tmp')
@@ -62,29 +109,53 @@ def checks(browser=True):
                 browser.close()
         print('Вхід, dashboard, inbox і Chromium: OK',flush=True)
 
-def switch(images, stamp):
+def switch(images, stamp, start=True):
     override=STATE/(stamp+'-compose.json')
     save(override,{'services':{service:{'image':image} for service,image in images.items()}})
-    run(COMPOSE+['-f',str(override),'up','-d','--no-deps','--no-build',*images])
+    command=['up','-d','--no-deps','--no-build'] if start else ['create','--no-deps','--no-build','--force-recreate']
+    run(COMPOSE+['-f',str(override),*command,*images])
 
 def rollback(manifest, manifest_path):
-    previous={service:item['rollback'] for service,item in manifest['services'].items() if item['rollback']}
+    manifest['status']='rolling_back';save(manifest_path,manifest)
+    # A later manual rollback must preserve other services as they are now,
+    # rather than demand they still match this historical release's state.
+    untouched={service:container_state(service) for service in IMAGES if service not in manifest['services']}
+    # Older manifests predate before_state; their known images were presumed running.
+    was_running=lambda item:item.get('before_state',{}).get('running',bool(item['rollback']))
+    previous={service:item['rollback'] for service,item in manifest['services'].items() if item['rollback'] and was_running(item)}
+    stopped={service:item['rollback'] for service,item in manifest['services'].items() if item['rollback'] and not was_running(item)}
     new=[service for service,item in manifest['services'].items() if not item['rollback']]
-    if previous:switch(previous,manifest['stamp']+'-rollback')
-    if new:run(COMPOSE+['stop',*new])
-    for service,item in manifest['services'].items():
-        if item['rollback']:run(['docker','tag',item['rollback'],IMAGES[service][0]+':local'])
-    manifest['status']='rolled_back';manifest['rolled_back_at']=datetime.now(timezone.utc).isoformat();save(manifest_path,manifest)
-    # A pre-night API may not yet have dashboard. Its original health still must recover.
-    import httpx
-    for attempt in range(20):
-        try:
-            if httpx.get('https://hire.qpon/api/health',timeout=10).status_code==200:
-                if httpx.get('https://h1hs.com/api/health',timeout=10).status_code!=200:raise RuntimeError('neighbor_failed_after_rollback')
-                print('Відкат: API та сусідній сервіс здорові.',flush=True);return
-        except httpx.HTTPError:pass
-        time.sleep(2)
-    manifest['status']='rollback_failed';save(manifest_path,manifest);raise RuntimeError('rollback_failed_stop_all_work')
+    try:
+        if previous:
+            switch(previous,manifest['stamp']+'-rollback')
+            verify_services(previous)
+        if stopped:
+            run(COMPOSE+['stop',*stopped])
+            switch(stopped,manifest['stamp']+'-rollback-stopped',start=False)
+            for service in stopped:
+                state=container_state(service)
+                if not state or state['running']:raise RuntimeError('stopped_service_not_restored')
+        # Restore absence, so a rejected first analyst image is never treated as a prior deployment.
+        if new:run(COMPOSE+['rm','--force','--stop',*new])
+        for service in new:
+            if container_state(service) is not None:raise RuntimeError('new_service_not_removed')
+        for service,item in manifest['services'].items():
+            if item['rollback']:run(['docker','tag',item['rollback'],IMAGES[service][0]+':local'])
+        verify_untouched(untouched)
+        # A pre-night API may not yet have dashboard. Its original health still must recover.
+        import httpx
+        for attempt in range(20):
+            try:
+                if httpx.get('https://hire.qpon/api/health',timeout=10).status_code==200:
+                    if httpx.get('https://h1hs.com/api/health',timeout=10).status_code!=200:raise RuntimeError('neighbor_failed_after_rollback')
+                    manifest['status']='rolled_back';manifest['rolled_back_at']=datetime.now(timezone.utc).isoformat();save(manifest_path,manifest)
+                    print('Відкат: вибрані сервіси, API та сусідній сервіс здорові.',flush=True);return
+            except httpx.HTTPError:pass
+            time.sleep(2)
+        raise RuntimeError('rollback_failed_stop_all_work')
+    except BaseException:
+        manifest['status']='rollback_failed';save(manifest_path,manifest)
+        raise
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--services',nargs='+',choices=IMAGES,default=['api']);parser.add_argument('--rollback',type=Path);parser.add_argument('--check-only',action='store_true');args=parser.parse_args()
@@ -102,26 +173,30 @@ def main():
             state=json.loads(path.read_text())
             if state.get('collectors_restarted'):raise RuntimeError('night_collector_restart_already_used')
     stamp='night-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ');path=STATE/(stamp+'.json')
-    manifest={'stamp':stamp,'status':'building','git_head':capture(['git','rev-parse','HEAD']),'services':{},'collectors_restarted':False}
+    manifest={'stamp':stamp,'status':'building','git_head':capture(['git','rev-parse','HEAD']),'services':{},'collectors_restarted':False,
+              'untouched':{service:container_state(service) for service in IMAGES if service not in args.services}}
     built={}
     for service in args.services:
-        image,dockerfile=IMAGES[service];old=running(service)
+        image,dockerfile=IMAGES[service];before=container_state(service);old=before['image'] if before else None
         oldtag=f'{image}:pre-{stamp}-{service}' if old else None
         if oldtag:run(['docker','tag',old,oldtag])
         candidate=f'{image}:{stamp}'
-        manifest['services'][service]={'before':old,'rollback':oldtag,'candidate':candidate}
+        manifest['services'][service]={'before':old,'before_state':before,'rollback':oldtag,'candidate':candidate}
         built[candidate]=dockerfile
     save(path,manifest)
     for candidate,dockerfile in built.items():run(['docker','build','-f',dockerfile,'-t',candidate,'.'])
     # Адитивні міграції не відкочуються: попередні images лишаються сумісними.
     run([sys.executable,'deploy/bootstrap.py'])
     for service,item in manifest['services'].items():
-        if running(service)!=item['before']:raise RuntimeError('parallel_deployment_detected_before_switch')
+        if identity(container_state(service))!=identity(item['before_state']):raise RuntimeError('parallel_deployment_detected_before_switch')
+    verify_untouched(manifest['untouched'])
     switched=False
     try:
         switched=True
         if collectors:manifest['collectors_restarted']=True;save(path,manifest)
-        switch({s:i['candidate'] for s,i in manifest['services'].items()},stamp)
+        candidates={s:i['candidate'] for s,i in manifest['services'].items()}
+        switch(candidates,stamp)
+        verify_services(candidates)
         import httpx
         for attempt in range(30):
             try:
@@ -129,6 +204,7 @@ def main():
             except httpx.HTTPError:pass
             time.sleep(2)
         checks()
+        verify_untouched(manifest['untouched'])
         for service,item in manifest['services'].items():run(['docker','tag',item['candidate'],IMAGES[service][0]+':local'])
         manifest['status']='verified';manifest['verified_at']=datetime.now(timezone.utc).isoformat();save(path,manifest)
         print('Розгорнуто й перевірено. Маніфест:',path,flush=True)

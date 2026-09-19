@@ -91,3 +91,27 @@ def test_rss_refresh_preserves_retry_after_and_claims_ready_sources(prepared):
         assert claim(collector) is None
         assert db.one('select status from core.refresh_requests order by id desc limit 1')['status']=='deferred'
     finally:collector.pool.close()
+
+
+def test_telegram_refresh_preserves_blocked_watch_deadline(prepared):
+    from test_runtime import msg
+    from pipeline.raw import save_item
+    from pipeline.watch import fail
+    db,_,cfg,source,_=prepared
+    db.execute("update core.modules set enabled=true where name='telegram'")
+    db.execute('update core.workflows set enabled=true')
+    db.execute('update core.sources set enabled=true')
+    db.execute('update core.telegram_accounts set enabled=true')
+    blocked=save_item(db,source,msg(101,'Vodafone: синтетична перевірка blocked backoff'),-100100)
+    active=save_item(db,source,msg(102,'Vodafone: синтетична активна перевірка'),-100100)
+    fail(db,blocked,'DiscussionUnavailable',600)
+    db.execute("update raw.watch_state set state='active',next_check_at=now()+interval '1 hour' where item_id=%s",(active,))
+    deadline=db.one('select next_check_at from raw.watch_state where item_id=%s',(blocked,))['next_check_at']
+    db.execute("insert into core.refresh_requests(workflow_id,service,requested_by) values(1,'telegram','test')")
+    collector=DB(cfg['COLLECTOR_DATABASE_URL'])
+    try:
+        apply_refresh_requests(collector,'telegram')
+        assert db.one('select next_check_at from raw.watch_state where item_id=%s',(blocked,))['next_check_at']==deadline
+        assert db.one('select next_check_at<=now() due from raw.watch_state where item_id=%s',(active,))['due']
+        assert db.one('select status from core.refresh_requests order by id desc limit 1')['status']=='running'
+    finally:collector.pool.close()
