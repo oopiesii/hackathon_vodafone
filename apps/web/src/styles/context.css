@@ -54,7 +54,7 @@
 /* Області */
 .regions-lead{margin-bottom:12px;font-size:var(--f-base);font-weight:500}
 .regions-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
-.region{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name value" "spark spark" "state state";gap:2px 8px;align-items:baseline;min-height:84px;padding:10px 12px;color:inherit;text-decoration:none;border:1px solid var(--border);border-radius:var(--radius);transition:border-color .15s}
+.region{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name name" "spark value" "state state";gap:4px 8px;align-items:center;min-height:84px;padding:10px 12px;color:inherit;text-decoration:none;border:1px solid var(--border);border-radius:var(--radius);transition:border-color .15s}
 .region:hover{border-color:var(--ring)}
 .region-name{grid-area:name;font-size:var(--f-sm);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .region-value{grid-area:value;font-size:var(--f-md);font-variant-numeric:tabular-nums}
@@ -93,3 +93,7 @@
 .briefing-ask input{min-height:32px;padding:4px 10px;font-size:var(--f-sm)}
 @media(max-width:1000px){.briefing{grid-template-columns:minmax(0,1fr);gap:16px}.briefing-chat{margin-top:0}}
 @media(max-width:640px){.briefing{padding:16px}.briefing-headline{font-size:var(--f-lg)}}
+.regions-caveat{margin:-4px 0 12px;padding:8px 12px;font-size:var(--f-sm);color:var(--muted-foreground);background:var(--muted);border-radius:var(--radius-sm);max-width:none}
+.regions-caveat strong{color:var(--foreground)}
+.region-value{white-space:nowrap}
+.region-value-flat{font-size:var(--f-xs);font-weight:400;color:var(--subtle-foreground)}

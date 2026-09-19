@@ -71,7 +71,10 @@ export async function networkContext(window: '24h' | '7d') {
   return { window, from: new Date(from * 1000).toISOString(), until: new Date(until * 1000).toISOString(), operators, events, thresholds: LEVELS };
 }
 
-// ---------- Зв'язність по областях (IODA, усі оператори разом) ----------
+// ---------- Раптові зміни зв'язності по областях (IODA, усі оператори разом) ----------
+// Показник порівнює «зараз» із медіаною ЦІЄЇ Ж доби, тому бачить лише раптові збої. Хронічні руйнування він не показує:
+// у прифронтових областях знижений рівень уже є «звичним». Порівняння з лютим 2022 перевірено й відкинуто як ненадійне:
+// воно дає ~50% і для тилових областей (змінилися адресний простір провайдерів і методика зондування).
 // Без Криму, Севастополя та Луганщини: українські оператори там не працюють, тож для цього дашборда ряд нерелевантний.
 const REGIONS: Record<string, string> = {
   4377: 'м. Київ', 4366: 'Київська', 4360: 'Львівська', 4373: 'Харківська', 4367: 'Одеська', 4371: 'Дніпропетровська', 4376: 'Запорізька',
@@ -79,6 +82,8 @@ const REGIONS: Record<string, string> = {
   4365: 'Кіровоградська', 4368: 'Вінницька', 4369: 'Житомирська', 4359: 'Хмельницька', 4356: 'Рівненська', 4363: 'Волинська',
   4361: 'Тернопільська', 4358: 'Івано-Франківська', 4357: 'Чернівецька', 4362: 'Закарпатська',
 };
+// Орієнтовний перелік областей з активними бойовими діями: лише для застереження в інтерфейсі, не для розрахунків.
+const FRONTLINE = new Set(['4372', '4376', '4378', '4373', '4370', '4371']);
 export async function regionsContext() {
   const until = Math.floor(Date.now() / 1000), from = until - 86400;
   const body = await getJson(`${IODA}/signals/raw/region/${Object.keys(REGIONS).join(',')}?from=${from}&until=${until}&maxPoints=96&datasource=ping-slash24`);
@@ -95,6 +100,7 @@ export async function regionsContext() {
       percent: values.map((v) => (v === null || !base ? null : Math.round((v / base) * 1000) / 10)) }];
   }).sort((a, b) => a.ratio - b.ratio);
   if (!regions.length) throw new Error('no_regions');
+  for (const region of regions) Object.assign(region, { frontline: FRONTLINE.has(region.code) });
   return { from: new Date(from * 1000).toISOString(), until: new Date(until * 1000).toISOString(), regions, thresholds: LEVELS };
 }
 

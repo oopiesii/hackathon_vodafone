@@ -48,8 +48,8 @@ export function NetworkHealth({ window }: { window: "24h" | "7d" | "30d" }) {
       {query.isError && <div className="chart-no-data">Не вдалося отримати вимірювання.</div>}
       {ready && (lines.length ? <>
         {own && <div className="network-verdict">
-          <strong className="network-value">{percent(own.signal.ratio * 100)}</strong>
-          <p>Мережа Vodafone {VERDICT[own.signal.level]}.<span>{lines.filter((l) => l.id !== "vodafone").map((l) => `${l.name} — ${percent(l.signal.ratio * 100)}`).join(" · ")}. 100% — звичний рівень за {span === "7d" ? "тиждень" : "добу"}; провал лінії означає масовий збій.</span></p>
+          <strong className="network-value" title="Частка від звичного рівня за вікно; вище звичного показуємо як 100%.">{percent(Math.min(100, own.signal.ratio * 100))}</strong>
+          <p>Мережа Vodafone {VERDICT[own.signal.level]}.<span>{lines.filter((l) => l.id !== "vodafone").map((l) => `${l.name} — ${percent(Math.min(100, l.signal.ratio * 100))}`).join(" · ")}. 100% — звичний рівень мережі за {span === "7d" ? "тиждень" : "добу"}: показник ловить раптові збої, а не загальний стан покриття.</span></p>
         </div>}
         <Lines lines={lines} threshold={ready.thresholds.normal * 100} withDate={span === "7d"} />
         <details className="chart-table"><summary>Що саме вимірюється</summary>
