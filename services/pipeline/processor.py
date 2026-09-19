@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import time
 from .bus import connect
 from .classification import classify, CONTEXT_REPLY
 from .db import DB
@@ -105,6 +106,7 @@ async def consume(db):
 async def main():
     db=DB()
     subscriber=asyncio.create_task(consume(db))
+    last_rollup = 0.0
     try:
         while True:
             rows=db.all('''select i.id from raw.items i join core.sources s on s.id=i.source_id
@@ -119,6 +121,12 @@ async def main():
                 where m.context_id is null and not m.deleted and not pm.deleted limit 100''')
             for row in late:
                 process(db,row['id'])
+            if time.monotonic() - last_rollup >= 60:
+                try:
+                    db.execute('select core.refresh_dashboard_rollups()')
+                except Exception as exc:
+                    log.warning('dashboard rollup retry: %s', type(exc).__name__)
+                last_rollup = time.monotonic()
             db.execute("insert into core.service_status(name,detail) values('processor','rules-v2; database catch-up active') on conflict(name) do update set heartbeat_at=now(),detail=excluded.detail")
             await asyncio.sleep(2)
     finally:
