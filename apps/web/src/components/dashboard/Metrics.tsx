@@ -18,7 +18,7 @@ export function Metrics({ data }: { data: DashboardResponse }) {
     return <Link to={metric.href} className="metric-tile" key={key} title={`${metric.value === null ? "Невідомо" : count(metric.value)} · ${metric.note}`}>
       <span className="metric-label">{METRIC_LABELS[key]}</span>
       <span className="metric-main"><strong>{metricValue(metric)}</strong><Spark values={metric.series} /></span>
-      <span className="metric-note">{metric.value === null ? "Недостатньо вимірювань" : key === "negative_share" ? "Евристика за реакціями" : key === "negative_reach" ? "Перегляди, не унікальні люди" : key === "critical" ? "За правилами, не прогноз" : key === "collection_lag" ? `Медіана · ${count(metric.measured)} вимірювань` : "Переглянути матеріали"}</span>
+      <span className="metric-note">{metric.value === null ? data.aggregation?.complete === false ? "Перерахунок агрегатів" : data.aggregated && key === "critical" ? "Поточні сигнали — за 24 год" : "Недостатньо вимірювань" : key === "negative_share" ? "Евристика за реакціями" : key === "negative_reach" ? "Перегляди, не унікальні люди" : key === "critical" ? "За 24 год · пороги правил" : key === "collection_lag" ? `Медіана · ${count(metric.measured)} вимірювань` : "Переглянути матеріали"}</span>
     </Link>;
   })}</div>;
 }
