@@ -4,6 +4,7 @@ import { hasPermission } from '@ufv/shared/permissions';
 import type { DashboardResponse, DashboardMetric, DashboardWindow, DashboardSignal } from '@ufv/shared/dashboard';
 import { requireSession, type AppEnv } from '../auth/middleware.js';
 import { reactionAttention, criticalAttention } from '../lib/metric-attention.js';
+import { monthlyRollups } from '../lib/monthly-rollups.js';
 import { query } from './telegram-admin.js';
 
 type Item = Record<string, any>;
@@ -76,9 +77,7 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
    left join core.modules md on md.name=s.kind left join raw.source_state st on st.source_id=s.id
    left join core.rss_status rs on rs.id=s.id left join raw.service_status svc on svc.name=case when s.kind='rss' then 'collector-rss' else 'collector-telegram' end
    where s.workflow_id=$1 group by s.kind`,[workflow]),
-  window==='30d'?query(`select r.*,r.day::text day_key,s.title,s.external_id from core.curated_daily_rollups r join core.sources s on s.id=r.source_id
-    where r.workflow_id=$1 and r.day>=($2::timestamptz at time zone 'Europe/Kyiv')::date
-    ${includeReview?'':"and r.decision='accepted'"} order by r.day`,[workflow,iso(start)]):Promise.resolve([]),
+  window==='30d'?monthlyRollups(query,workflow,iso(start),includeReview):Promise.resolve([]),
   window==='30d'?Promise.resolve([]):query(`select * from core.curated_visible_items where workflow_id=$1 and event_at>=$2 and event_at<=$3
     and decision=any($4::text[]) order by event_at,id`,[workflow,new Date(now-7*24*HOUR),end,includeReview?['accepted','review']:['accepted']]),
   query(`select decision,source_kind,count(*)::int count,
