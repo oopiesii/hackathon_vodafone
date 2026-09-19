@@ -34,7 +34,7 @@ export function Dashboard({ me }: { me: Me | undefined }) {
     <div className="dashboard-controls">
       <Tabs label="Період дашборда" value={window} onChange={v => setFilter("window", v)} items={[{ value: "24h", label: "Сьогодні" }, { value: "7d", label: "7 днів" }, { value: "30d", label: "30 днів" }]} />
       <select aria-label="Напрям моніторингу" value={workflow} onChange={e => setFilter("workflow_id", e.target.value)}>{(workflows.data?.items ?? [{ id: "1", name: "Vodafone та український телеком" }]).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select>
-      <span className="dashboard-period">{window === "24h" ? "Останні 24 години" : `Останні ${window === "7d" ? "7" : "30"} днів`} · Київ</span>
+      <span className="dashboard-period">{window === "24h" ? "Останні 24 години" : `Останні ${window === "7d" ? "7" : "30"} днів`} · Україна</span>
     </div>
     {query.isError && <Alert tone="danger"><div>Не вдалося оновити дашборд. {errorText(query.error)}</div><button className="btn btn-outline btn-sm" type="button" onClick={() => query.refetch()}>Спробувати знову</button></Alert>}
     {!data && query.isPending && <div className="dashboard-loading" role="status" aria-busy="true"><span>Збираємо показники з дозволених матеріалів…</span><div className="dashboard-skeleton" /><div className="dashboard-skeleton" /></div>}
@@ -63,7 +63,7 @@ export function Dashboard({ me }: { me: Me | undefined }) {
         <Card className="span-4" title="Конкуренти">{calculating ? waiting : <BarList data={data.competitors.map(c => ({ id: c.brand, label: c.brand === "kyivstar" ? "Київстар" : c.brand === "lifecell" ? "lifecell" : c.brand, value: c.count, href: c.href }))} />}</Card>
         <Summary summary={data.ai} />
       </div>
-      <details className="dashboard-methodology"><summary>Методика, покриття та обмеження</summary><ul>{data.methodology.map(line => <li key={line}>{line}</li>)}</ul><MetricsTable data={data} /><div className="dashboard-method-meta">Роль: {me?.user.role === "viewer" ? "лише прийняті матеріали" : "прийняті та на перевірці"}. Зріз: {time(data.start)} – {time(data.end)} (Київ).</div></details>
+      <details className="dashboard-methodology"><summary>Методика, покриття та обмеження</summary><ul>{data.methodology.map(line => <li key={line}>{line}</li>)}</ul><MetricsTable data={data} /><div className="dashboard-method-meta">Роль: {me?.user.role === "viewer" ? "лише прийняті матеріали" : "прийняті та на перевірці"}. Зріз: {time(data.start)} – {time(data.end)} (місцевий час).</div></details>
     </div>}
   </div>;
 }
