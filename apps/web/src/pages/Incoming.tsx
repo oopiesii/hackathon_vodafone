@@ -2,7 +2,7 @@ import { TelegramEvidence, type TelegramDetail } from "../components/TelegramEvi
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Inbox, RefreshCw, Search } from "lucide-react";
 import { useRef, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { Alert, Badge, Dialog, Empty, Field, PageHeader, Section, Tabs } from "../components/ui";
 import { api, can, errorText, send, type Me } from "../lib/api";
 import { excerpt, formatDate, formatDateTime } from "../lib/format";
@@ -19,11 +19,19 @@ type InboxData = {
 };
 
 export function Incoming({ me }: { me: Me | undefined }) {
-  const [workflow, setWorkflow] = useState("all"), [source, setSource] = useState("all"), [state, setState] = useState("all");
-  const [q, setQ] = useState(""), [kind, setKind] = useState(""), [before, setBefore] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const workflow = searchParams.get("workflow_id") || "all", source = searchParams.get("source_id") || "all", state = searchParams.get("state") || "all";
+  const q = searchParams.get("q") || "", kind = searchParams.get("kind") || "", before = searchParams.get("before") || "";
+  const setField = (key: string) => (value: string) => {
+    setSearchParams(previous => { const next = new URLSearchParams(previous); value ? next.set(key, value) : next.delete(key); if (key !== "before") next.delete("before"); if (key === "workflow_id") next.delete("source_id"); return next; });
+  };
+  const setWorkflow = setField("workflow_id"), setSource = setField("source_id"), setState = setField("state"), setQ = setField("q"), setKind = setField("kind"), setBefore = setField("before");
+  const scoped = searchParams.has("from") || searchParams.has("until");
+  const dashboardBack = "/?" + new URLSearchParams({ workflow_id: workflow === "all" ? "1" : workflow, window: searchParams.get("window") || "24h" });
   const [detail, setDetail] = useState<{ item: Item; parent: Item | null; telegram?:TelegramDetail } | null>(null), [error, setError] = useState("");
   const dialog = useRef<HTMLDialogElement>(null);
-  const params = new URLSearchParams({ workflow_id: workflow, source_id: source, state, q, kind, before });
+  const params = new URLSearchParams(searchParams);
+  Object.entries({ workflow_id: workflow, source_id: source, state, q, kind, before }).forEach(([key, value]) => params.set(key, value));
   const incoming = useQuery({ queryKey: ["inbox", params.toString()], queryFn: () => api<InboxData>("/inbox?" + params), refetchInterval: 5000 });
   const workflows = useQuery({ queryKey: ["workflows"], queryFn: () => api<{ items: { id: string; name: string }[] }>("/workflows") });
   const counts = Object.fromEntries((incoming.data?.counts || []).map((c) => [c.state, c.count]));
@@ -50,11 +58,13 @@ export function Incoming({ me }: { me: Me | undefined }) {
     <>
       <PageHeader
         title="Увесь вхід"
+        breadcrumb={<Link className="btn btn-ghost btn-sm" to={dashboardBack}>До дашборда</Link>}
         description="Пости, коментарі й повідомлення груп з усіх явно підключених джерел, включно з відсіяним і чергою обробки. Це не всі чати Telegram-акаунтів. Контактні дані маскуються до збереження."
         actions={<button type="button" className="btn btn-outline" onClick={() => incoming.refetch()} disabled={incoming.isFetching}><RefreshCw size={16} aria-hidden="true" />Оновити</button>}
       />
 
-      <Tabs label="Стан обробки" value={state} onChange={(next) => { setState(next); setBefore(""); }}
+      {scoped && <div className="feed-scope"><Badge tone="info">Зріз із дашборда</Badge><span>{formatDateTime(searchParams.get("from"))} – {formatDateTime(searchParams.get("until"))}</span><button className="btn btn-ghost btn-sm" type="button" onClick={() => setSearchParams({ workflow_id: workflow, state })}>Скинути зріз</button></div>}
+      <Tabs label="Стан обробки" value={state} onChange={(next) => { setState(next); }}
         items={[
           { value: "all", label: "Увесь вхід", count: incoming.data ? total : "—" },
           ...Object.entries(ITEM_STATES).map(([key, s]) => ({ value: key, label: s.label, count: incoming.data ? counts[key] || 0 : "—" })),
@@ -64,23 +74,23 @@ export function Incoming({ me }: { me: Me | undefined }) {
         <Field label="Пошук у тексті" className="toolbar-wide">
           <span className="search">
             <Search size={16} aria-hidden="true" />
-            <input type="search" value={q} onChange={(e) => { setQ(e.target.value); setBefore(""); }} placeholder="Зокрема у відсіяному…" />
+            <input type="search" value={q} onChange={(e) => { setQ(e.target.value); }} placeholder="Зокрема у відсіяному…" />
           </span>
         </Field>
         <Field label="Workflow">
-          <select value={workflow} onChange={(e) => { setWorkflow(e.target.value); setSource("all"); setBefore(""); }}>
+          <select value={workflow} onChange={(e) => { setWorkflow(e.target.value); }}>
             <option value="all">Усі workflow</option>
             {workflows.data?.items.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select>
         </Field>
         <Field label="Джерело">
-          <select value={source} onChange={(e) => { setSource(e.target.value); setBefore(""); }}>
+          <select value={source} onChange={(e) => { setSource(e.target.value); }}>
             <option value="all">Усі джерела</option>
             {incoming.data?.sources.filter((s) => workflow === "all" || s.workflow_id === workflow).map((s) => <option key={s.id} value={s.id}>{s.kind==='rss'?(s.title||s.external_id):'@'+s.external_id}</option>)}
           </select>
         </Field>
         <Field label="Тип">
-          <select value={kind} onChange={(e) => { setKind(e.target.value); setBefore(""); }}>
+          <select value={kind} onChange={(e) => { setKind(e.target.value); }}>
             <option value="">Усі типи</option>
             <option value="post">Пости</option>
             <option value="comment">Коментарі</option><option value="group_message">Повідомлення груп</option>
