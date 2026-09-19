@@ -31,15 +31,15 @@ function QueryScope({ children }: { children: ReactNode }) {
 
 function PublicApp() {
   const location = useLocation();
-  const [boundary, setBoundary] = useState({ navigation: location.key, hash: location.hash, id: 0 });
+  const [boundary, setBoundary] = useState({ location, id: 0 });
   // Native same-document hash navigation can reuse the history entry's key.
   // Change the mount identity before any old shared content can be committed.
-  if (boundary.navigation !== location.key || boundary.hash !== location.hash) {
-    setBoundary({ navigation: location.key, hash: location.hash, id: boundary.id + 1 });
+  if (boundary.location !== location) {
+    setBoundary({ location, id: boundary.id + (location.hash ? 1 : 0) });
     return null;
   }
-  // Every public navigation verifies the current share cookie afresh. No token
-  // is included in a query key; different links never inherit a previous feed.
+  // A new link resets access. Filters preserve the redeemed scope: rereading
+  // an unbound cookie here could adopt another tab's broader share session.
   return <QueryScope key={boundary.id}><SharedDashboard/></QueryScope>;
 }
 function AuthenticatedApp() {
