@@ -6,13 +6,13 @@
 <title>Монітор бренду Vodafone Україна</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --red:#E60000; --red-deep:#9E0000; --pink:#FFE1E1; --pink-2:#FFC2C2;
   --paper:#FFFFFF; --ink:#000000; --muted:#6B3A3A; --bg-a:#FFFFFF; --bg-b:#FFE9E9;
   --hi:#FFFFFF; --lo:#9E0000; --ok:#1E7A1E;
-  --pixel:"Pixelify Sans","Courier New",monospace;
+  --pixel:"Inter",Arial,sans-serif;
   --body:Verdana,Tahoma,"DejaVu Sans",Geneva,sans-serif;
 }
 @media (prefers-color-scheme: dark){
@@ -47,14 +47,11 @@ a:focus-visible,button:focus-visible{outline:3px dashed var(--red);outline-offse
 .bar .btns{display:flex;gap:3px}
 .bar .btns span{width:18px;height:16px;background:#fff;color:var(--red);font:700 11px/14px var(--body);
   text-align:center;border:1px solid;border-color:#fff #600 #600 #fff}
-.pane{padding:14px 16px}
+.pane{padding:14px 16px;overflow-wrap:anywhere}
 
 /* masthead */
 .mast{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
-.logo{width:74px;height:74px;border-radius:50%;background:var(--red);position:relative;
-  box-shadow:inset -6px -6px 0 var(--red-deep)}
-.logo:after{content:"";position:absolute;left:24px;top:14px;width:30px;height:40px;background:#fff;
-  border-radius:60% 60% 50% 50%/70% 70% 40% 40%;transform:rotate(-12deg)}
+.logo{width:74px;height:74px;display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 h1{font-family:var(--pixel);font-weight:700;font-size:clamp(28px,5vw,52px);line-height:1;margin:0;color:var(--red);
   text-shadow:3px 3px 0 var(--pink-2)}
 .sub{margin:6px 0 0;color:var(--muted);max-width:70ch}
@@ -73,7 +70,7 @@ h1{font-family:var(--pixel);font-weight:700;font-size:clamp(28px,5vw,52px);line-
 .crit .bar{background:repeating-linear-gradient(45deg,var(--red) 0 12px,#000 12px 24px)}
 .crit .bar b{background:var(--red);padding:0 6px}
 .blink{animation:bl 1s steps(1) infinite}@keyframes bl{50%{opacity:0}}
-.critgrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px}
+.critgrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;align-items:start}
 .bignum{font-family:var(--pixel);font-size:clamp(56px,9vw,104px);line-height:.9;color:var(--red);margin:4px 0}
 .bignum small{font-size:.3em;color:var(--ink);display:block;margin-top:6px;line-height:1.2}
 .crit h2{font-family:var(--pixel);font-size:22px;margin:0 0 6px;line-height:1.2}
@@ -82,17 +79,28 @@ h1{font-family:var(--pixel);font-weight:700;font-size:clamp(28px,5vw,52px);line-
 .reacts{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0}
 .reacts span{border:1px solid var(--pink-2);padding:0 6px;font-size:13px}
 .reacts span.neg{border-color:var(--red);background:var(--pink);font-weight:700}
-.todo{background:var(--pink);border:2px dashed var(--red);padding:10px 12px}
-.todo h3{font-family:var(--pixel);font-size:17px;margin:0 0 6px;color:var(--red)}
+.reacts-spoiler{margin:6px 0;border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);background:var(--paper)}
+.reacts-spoiler summary{cursor:pointer;list-style:none;font-family:var(--pixel);font-size:13px;color:var(--red);
+  padding:5px 10px;background:var(--pink)}
+.reacts-spoiler summary::-webkit-details-marker{display:none}
+.reacts-spoiler summary::before{content:"▶ "}
+.reacts-spoiler[open] summary::before{content:"▼ "}
+.reacts-spoiler[open] summary{border-bottom:1px dashed var(--red)}
+.reacts-spoiler>.reacts,.reacts-spoiler>.note{padding-left:10px;padding-right:10px}
+.reacts-spoiler>.reacts{margin-top:8px}
+.todo,.now{background:var(--pink);border:2px dashed var(--red);padding:10px 12px}
+.now{margin-top:14px}
+.todo h3,.now h3{font-family:var(--pixel);font-size:17px;margin:0 0 6px;color:var(--red)}
 .todo ol{margin:0;padding-left:20px}.todo li{margin-bottom:4px}
-.now{margin-top:14px;border-top:2px solid var(--red);padding-top:10px;font-size:13px}
-.now b{font-family:var(--pixel);font-size:15px;color:var(--red)}
+.now p{margin:4px 0;font-size:13px}
 .status{display:inline-block;font-size:12px;padding:0 6px;border:1px solid}
 .status.done{color:var(--ok);border-color:var(--ok)} .status.act{color:#fff;background:var(--red);border-color:var(--red)}
 
 /* stats */
 .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:22px}
-.stat{background:var(--paper);border:2px solid var(--red);padding:10px 12px}
+.stat{background:var(--paper);border:2px solid var(--red);padding:10px 12px;
+  font:inherit;color:inherit;text-align:left;display:block;width:100%;cursor:pointer}
+.stat:hover{background:var(--pink)}
 .stat .n{font-family:var(--pixel);font-size:40px;line-height:1;color:var(--red)}
 .stat .l{font-size:12px;color:var(--muted)}
 .charts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.6fr);gap:18px}
@@ -108,8 +116,17 @@ h1{font-family:var(--pixel);font-weight:700;font-size:clamp(28px,5vw,52px);line-
 .chip{font:13px var(--body);background:var(--paper);color:var(--ink);border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);
   padding:3px 10px;cursor:pointer}
 .chip[aria-pressed="true"]{background:var(--red);color:#fff;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
-table{width:100%;border-collapse:collapse;font-size:13px;min-width:720px}
-th{font-family:var(--pixel);font-weight:600;font-size:14px;text-align:left;background:var(--red);color:#fff;padding:6px 8px}
+.filterbar{display:flex;flex-wrap:wrap;gap:8px 20px;margin-bottom:12px}
+.chipgroup{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.chipgroup-break{flex-basis:100%}
+.chipgroup-label{font-family:var(--pixel);font-size:12px;color:var(--muted);white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-family:var(--pixel);font-weight:600;font-size:14px;text-align:left;background:var(--red);color:#fff;padding:0}
+.sortbtn{font:inherit;background:none;border:none;color:inherit;cursor:pointer;padding:6px 8px;width:100%;
+  text-align:left;display:flex;align-items:center;gap:4px}
+.sortbtn:hover,.sortbtn:focus-visible{background:var(--red-deep)}
+.sort-ind{font-size:10px}
+th.plain{padding:6px 8px}
 td{padding:7px 8px;border-bottom:1px dotted var(--red);vertical-align:top}
 tr:nth-child(even) td{background:var(--pink)}
 .sev{font-family:var(--pixel);font-size:13px;white-space:nowrap}
@@ -126,14 +143,67 @@ td.what{max-width:44ch}
 .how ul{padding-left:18px;margin:0}
 .asm{background:var(--pink);border-left:4px solid var(--red);padding:2px 8px;display:block;margin:4px 0}
 footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--muted)}
-.counter{display:inline-block;background:#000;color:#FF3B3B;padding:1px 6px;letter-spacing:2px;border:2px inset #888}
 .theme{font:12px var(--body);background:var(--paper);color:var(--ink);border:1px solid var(--red);cursor:pointer;padding:2px 8px}
+
+/* tabs */
+.tabbar{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
+.tabbtn{font:15px var(--pixel);background:var(--paper);color:var(--ink);border:2px solid;
+  border-color:var(--hi) var(--lo) var(--lo) var(--hi);padding:6px 16px;cursor:pointer}
+.tabbtn[aria-selected="true"]{background:var(--red);color:#fff;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+.view[hidden]{display:none}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* chat */
+.chatlog{max-height:min(440px,60vh);min-height:180px;overflow-y:auto;border:2px inset var(--pink-2);
+  background:var(--paper);padding:10px;margin:0 0 10px}
+.msg{max-width:88%;margin:0 0 10px;padding:8px 10px;font-size:13px;line-height:1.55;border:1px solid var(--red)}
+.msg.bot{background:var(--pink);margin-right:auto}
+.msg.user{background:var(--red);color:#fff;margin-left:auto;border-color:var(--red-deep)}
+.msg h4{margin:0 0 6px;font-family:var(--pixel);font-size:14px}
+.msg p{margin:6px 0}
+.msg ul{margin:6px 0;padding-left:18px}
+.msg li{margin-bottom:4px}
+.msg a{word-break:break-word}
+.suggest{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chatform{display:flex;gap:8px}
+.chatform input[type=text]{flex:1;min-width:0;padding:8px 10px;font:13px var(--body);border:2px solid;
+  border-color:var(--lo) var(--hi) var(--hi) var(--lo);background:var(--paper);color:var(--ink)}
 
 @media (max-width:900px){
   .critgrid,.charts,.how{grid-template-columns:1fr}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
-@media (max-width:520px){.mast{grid-template-columns:1fr}.logo{width:52px;height:52px}.logo:after{left:17px;top:10px;width:20px;height:28px}}
+/* нижче 700px таблиця перетворюється на картки замість стиснення колонок чи скролу вбік */
+@media (max-width:700px){
+  table{display:block}
+  thead{display:block}
+  thead tr{display:flex;flex-wrap:wrap;gap:4px}
+  thead th{display:block;width:auto}
+  thead .sortbtn{width:auto}
+  tbody{display:block}
+  tr{display:block;margin-bottom:12px;border:2px solid var(--red)}
+  td{display:block;padding:6px 8px;border-bottom:1px dotted var(--pink-2)}
+  td:last-child{border-bottom:none}
+  td[data-label]::before{content:attr(data-label) ": ";font-family:var(--pixel);font-size:11px;
+    color:var(--muted);display:block;margin-bottom:2px}
+  td.what{max-width:none}
+}
+@media (max-width:520px){
+  .mast{grid-template-columns:1fr}
+  .logo{width:52px;height:52px}
+  .msg{max-width:94%}
+}
+@media (max-width:480px){
+  .wrap{padding:14px 10px 32px}
+  .pane{padding:12px}
+  .stats{grid-template-columns:1fr 1fr;gap:8px}
+  .stat{padding:8px 10px}
+  .stat .n{font-size:32px}
+  .tabbtn{padding:6px 10px;font-size:13px}
+  .chip{padding:3px 8px;font-size:12px}
+  .chatform{gap:6px}
+}
+@media (max-width:360px){.stats{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -143,9 +213,9 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
 <!-- MASTHEAD -->
 <section class="win">
   <div class="bar"><span>vodafone_monitor.exe</span>
-    <div class="btns"><button class="theme" id="themeBtn" type="button">Тема</button><span>_</span><span>□</span><span>×</span></div></div>
+    <div class="btns"><button class="theme" id="themeBtn" type="button">Тема</button></div></div>
   <div class="pane mast">
-    <div class="logo" aria-hidden="true"></div>
+    <img class="logo" src="logo.png" alt="" width="74" height="74">
     <div>
       <h1>Монітор бренду Vodafone Україна</h1>
       <p class="sub">Скарги на мережу, інтернет і сервіси Vodafone у соцмережах та ЗМІ. Знімок зібрано 19.09.2026 з відкритих джерел; кожна згадка нижче має посилання на оригінал.</p>
@@ -154,9 +224,17 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
   </div>
 </section>
 
+<!-- TABS -->
+<div class="tabbar" role="tablist" aria-label="Розділи">
+  <button class="tabbtn" role="tab" aria-selected="true" aria-controls="view-dash" id="tabBtnDash" data-tab="dash" type="button">📊 Дашборд</button>
+  <button class="tabbtn" role="tab" aria-selected="false" aria-controls="view-chat" id="tabBtnChat" data-tab="chat" type="button">🤖 AI-аналітик</button>
+</div>
+
+<div class="view" id="view-dash" role="tabpanel" aria-labelledby="tabBtnDash">
+
 <!-- CRITICAL -->
 <section class="win crit" aria-labelledby="critTitle">
-  <div class="bar"><span><b class="blink">!!!</b> Найкритичніша ситуація у знімку</span><div class="btns"><span>×</span></div></div>
+  <div class="bar"><span><b class="blink">!!!</b> Найкритичніша ситуація у знімку</span></div>
   <div class="pane critgrid">
     <div>
       <h2 id="critTitle">Збій після нічного обстрілу Києва: домашній інтернет, поповнення рахунку, контакт-центр</h2>
@@ -167,11 +245,15 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
         <dt>Відлуння</dt><dd><a href="https://thepage.ua/ua/news/problemi-zi-zvyazkom-vodafone-pislya-ataki-na-kiyiv-2-lipnya-2026-sho-vidomo" target="_blank" rel="noopener">The Page</a> та <a href="https://www.ukr.net/news/details/technologies/118279815.html" target="_blank" rel="noopener">UKR.NET</a> того ж дня</dd>
         <dt>Статус</dt><dd><span class="status done">Вирішено</span></dd>
       </dl>
-      <div class="reacts" aria-label="Реакції під постом">
-        <span>❤ 93</span><span>🙏 50</span><span>❤‍🔥 6</span><span>👍 5</span>
-        <span class="neg">🤣 4</span><span class="neg">😁 3</span><span class="neg">💔 2</span><span>🤩 1</span><span class="neg">😈 1</span>
-      </div>
-      <p class="note">Негативні/іронічні реакції: 10 із 165 (6%). Аудиторія переважно підтримує — причина зовнішня (обстріл), а не провал оператора. Тон відповіді має це враховувати.</p>
+       <p class="note">Негативні/іронічні реакції: 10 із 165 (6%).</p>
+      <details class="reacts-spoiler">
+        <summary>Показати реакції та деталі</summary>
+        <div class="reacts" aria-label="Реакції під постом">
+          <span>❤ 93</span><span>🙏 50</span><span>❤‍🔥 6</span><span>👍 5</span>
+          <span class="neg">🤣 4</span><span class="neg">😁 3</span><span class="neg">💔 2</span><span>🤩 1</span><span class="neg">😈 1</span>
+        </div>
+        <p class="note">Аудиторія переважно підтримує — причина зовнішня (обстріл), а не провал оператора. Тон відповіді має це враховувати.</p>
+      </details>
     </div>
     <div>
       <div class="todo">
@@ -184,9 +266,10 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
         </ol>
       </div>
       <div class="now">
-        <b>Що зараз (19.09):</b> активних масових збоїв у знімку не виявлено. Найсвіжіший мережевий сигнал —
-        <a href="https://www.vodafone.ua/news" target="_blank" rel="noopener">демонтаж базової станції в Обухові</a> на вимогу орендодавця (16.09). <span class="status act">Відкрито</span>
-        Очікуйте локальних скарг на покриття з Обухова — варто підготувати відповідь заздалегідь.
+        <h3>Що зараз (19.09)</h3>
+        <p>Активних масових збоїв у знімку не виявлено. Найсвіжіший мережевий сигнал —
+        <a href="https://www.vodafone.ua/news" target="_blank" rel="noopener">демонтаж базової станції в Обухові</a> на вимогу орендодавця (16.09). <span class="status act">Відкрито</span></p>
+        <p>Очікуйте локальних скарг на покриття з Обухова — варто підготувати відповідь заздалегідь.</p>
       </div>
     </div>
   </div>
@@ -196,7 +279,7 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
 <div class="stats" id="stats"></div>
 
 <section class="win">
-  <div class="bar"><span>Статистика знімка</span><div class="btns"><span>×</span></div></div>
+  <div class="bar"><span>Статистика знімка</span></div>
   <div class="pane charts">
     <div class="chart"><h3>Негатив за темою</h3><div id="donutCat"></div><ul class="legend" id="legCat"></ul></div>
     <div class="chart"><h3>Звідки згадки</h3><div id="donutSrc"></div><ul class="legend" id="legSrc"></ul></div>
@@ -209,19 +292,35 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
 
 <!-- LIST -->
 <section class="win" aria-labelledby="listTitle">
-  <div class="bar"><span id="listTitle">Усі негативні згадки</span><div class="btns"><span>×</span></div></div>
+  <div class="bar"><span id="listTitle">Усі негативні згадки</span></div>
   <div class="pane">
-    <div class="chips" id="chips" role="group" aria-label="Фільтр за темою"></div>
-    <div class="scroll"><table>
-      <thead><tr><th>Дата</th><th>Рівень</th><th>Тема</th><th>Що сталося</th><th>Джерело</th></tr></thead>
+    <div class="filterbar">
+      <div class="chipgroup"><span class="chipgroup-label">Фільтр за темою:</span>
+        <div class="chips" id="chips" role="group" aria-label="Фільтр за темою"></div>
+      </div>
+      <div class="chipgroup"><span class="chipgroup-label">Фільтр за містом:</span>
+        <div class="chips" id="cityChips" role="group" aria-label="Фільтр за містом"></div>
+      </div>
+      <div class="chipgroup chipgroup-break"><span class="chipgroup-label">Фільтр за критичністю:</span>
+        <div class="chips" id="sevChips" role="group" aria-label="Фільтр за критичністю"></div>
+      </div>
+    </div>
+    <p class="note" style="margin:0 0 8px">Клацніть на заголовок стовпця, щоб сортувати.</p>
+    <table>
+      <thead><tr>
+        <th><button type="button" class="sortbtn" data-sort="d">Дата<span class="sort-ind" aria-hidden="true"></span></button></th>
+        <th><button type="button" class="sortbtn" data-sort="sev">Критичність<span class="sort-ind" aria-hidden="true"></span></button></th>
+        <th><button type="button" class="sortbtn" data-sort="cat">Тема<span class="sort-ind" aria-hidden="true"></span></button></th>
+        <th class="plain">Місто</th><th class="plain">Що сталося</th><th class="plain">Джерело</th>
+      </tr></thead>
       <tbody id="rows"></tbody>
-    </table></div>
+    </table>
   </div>
 </section>
 
 <!-- FILTERED -->
-<section class="win">
-  <div class="bar"><span>Відсіяно як шум — і чому</span><div class="btns"><span>×</span></div></div>
+<section class="win" aria-labelledby="filteredTitle">
+  <div class="bar"><span id="filteredTitle">Відсіяно як шум — і чому</span></div>
   <div class="pane">
     <p class="note" style="margin-top:0">Кожна з цих згадок пройшла б простий фільтр «Vodafone + збій/негатив». Без перевірки вони дали б хибну тривогу.</p>
     <ul class="filt" id="filtered"></ul>
@@ -230,7 +329,7 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
 
 <!-- HOW -->
 <section class="win">
-  <div class="bar"><span>Як це працює, затримка і припущення</span><div class="btns"><span>×</span></div></div>
+  <div class="bar"><span>Як це працює, затримка і припущення</span></div>
   <div class="pane how">
     <div>
       <h3>Що в знімку реальне, а що ні</h3>
@@ -258,7 +357,7 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
     <div>
       <h3>Як згадка стає тривогою</h3>
       <ul>
-        <li>Відсікаємо тезок: у тексті має бути Україна, українське місто, 111, My Vodafone або кирилиця «Водафон».</li>
+        <li>Відсікаємо тези: у тексті має бути Україна, українське місто, 111, My Vodafone або кирилиця «Водафон».</li>
         <li>Відсікаємо старе: беремо дату з самої сторінки, а не з пошуковика.</li>
         <li>Ловимо згадки без назви бренду: «оранжевий… ні, червоний оператор», «050/066/095/099 не ловить», «мій оператор ліг».</li>
         <li>Тривога: ≥3× медіани переглядів <em>або</em> <span class="asm">припущення: ≥10 скарг з одного міста за 15 хв. Поріг треба підібрати на історії збоїв 2024–2026.</span></li>
@@ -267,7 +366,25 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
   </div>
 </section>
 
-<footer>Відвідувачів: <span class="counter">000419</span> · зроблено в червоно-білих тонах · знімок 19.09.2026</footer>
+</div>
+
+<!-- AI-АНАЛІТИК -->
+<div class="view" id="view-chat" role="tabpanel" aria-labelledby="tabBtnChat" hidden>
+<section class="win" aria-labelledby="chatTitle">
+  <div class="bar"><span id="chatTitle">ai_analyst.exe — звіти зі знімка</span></div>
+  <div class="pane">
+    <div class="suggest" id="suggest"></div>
+    <div class="chatlog" id="chatlog" role="log" aria-live="polite" aria-label="Історія чату"></div>
+    <form class="chatform" id="chatform">
+      <label class="sr-only" for="chatInput">Питання до AI-аналітика</label>
+      <input type="text" id="chatInput" placeholder="Напишіть, що хочете дізнатись…" autocomplete="off">
+      <button class="chip" type="submit">Надіслати</button>
+    </form>
+  </div>
+</section>
+</div>
+
+<footer>зроблено в <span id="tone">червоно-білих</span> тонах · знімок 19.09.2026</footer>
 </div>
 
 <script src="data.js"></script>
@@ -286,17 +403,22 @@ document.getElementById("tick").textContent=mentions.map(m=>`▶ ${fmt(m.d)} · 
 const high=mentions.filter(m=>m.sev==="h").length;
 const total=mentions.length+filtered.length;
 document.getElementById("stats").innerHTML=[
- [mentions.length,"негативних згадок у знімку"],
- [high,"критична (охоплення ≥3× норми)"],
- [Math.round(filtered.length/total*100)+"%","сирих збігів відсіяно як шум"],
- ["4,0×","пікове охоплення посту"]
-].map(([n,l])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+ [mentions.length,"негативних згадок у знімку","listTitle"],
+ [high,"критична (охоплення ≥3× норми)","listTitle"],
+ [Math.round(filtered.length/total*100)+"%","сирих збігів відсіяно як шум","filteredTitle"],
+ ["4,0×","пікове охоплення посту","critTitle"]
+].map(([n,l,t])=>`<button type="button" class="stat" data-target="${t}"><div class="n">${n}</div><div class="l">${l}</div></button>`).join("");
+document.getElementById("stats").addEventListener("click",e=>{
+  const b=e.target.closest(".stat");if(!b)return;
+  const el=document.getElementById(b.dataset.target);if(!el)return;
+  el.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
+});
 
 // donut
 function donut(el,leg,data,colors){
   const tot=data.reduce((a,[,v])=>a+v,0),R=54,C=2*Math.PI*R;let off=0;
   const segs=data.filter(([,v])=>v>0).map(([k,v])=>{const len=v/tot*C;const s=`<circle r="${R}" cx="70" cy="70" fill="none" stroke="${colors[k]}" stroke-width="26" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"/>`;off+=len;return s}).join("");
-  document.getElementById(el).innerHTML=`<svg viewBox="0 0 140 140" width="160" height="160" role="img" aria-label="Кругова діаграма"><circle r="${R}" cx="70" cy="70" fill="none" stroke="var(--red)" stroke-width="28"/><circle r="${R}" cx="70" cy="70" fill="none" stroke="var(--paper)" stroke-width="24"/>${segs}<text x="70" y="78" text-anchor="middle" font-family="Pixelify Sans, monospace" font-size="26" fill="var(--ink)">${tot}</text></svg>`;
+  document.getElementById(el).innerHTML=`<svg viewBox="0 0 140 140" width="160" height="160" role="img" aria-label="Кругова діаграма"><circle r="${R}" cx="70" cy="70" fill="none" stroke="var(--red)" stroke-width="28"/><circle r="${R}" cx="70" cy="70" fill="none" stroke="var(--paper)" stroke-width="24"/>${segs}<text x="70" y="78" text-anchor="middle" font-family="Inter, sans-serif" font-size="26" fill="var(--ink)">${tot}</text></svg>`;
   document.getElementById(leg).innerHTML=data.map(([k,v])=>`<li><i style="background:${colors[k]}"></i>${CATS[k]||k} — ${v}${v===0?" (не підключено)":""}</li>`).join("");
 }
 const byCat={};mentions.forEach(m=>byCat[m.cat]=(byCat[m.cat]||0)+1);
@@ -311,7 +433,7 @@ donut("donutSrc","legSrc",["Telegram","ЗМІ","Сайт Vodafone","Threads","In
   let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Перегляди постів Telegram-каналу, пік на пості 1429">`;
   views.forEach(([id,v],i)=>{const hot=v>=MEDIAN*3;const x=pad+i*bw;
     s+=`<a href="https://t.me/VFUkraine/${id}" target="_blank"><rect x="${x+1}" y="${y(v)}" width="${bw-3}" height="${H-pad-y(v)}" fill="${hot?"var(--red)":"var(--pink-2)"}" stroke="${hot?"var(--ink)":"none"}"><title>Пост ${id}: ${v} тис. переглядів</title></rect></a>`;
-    if(hot)s+=`<text x="${x+bw/2}" y="${y(v)-5}" text-anchor="middle" font-family="Pixelify Sans, monospace" font-size="13" fill="var(--red)">29,6K</text>`});
+    if(hot)s+=`<text x="${x+bw/2}" y="${y(v)-5}" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" fill="var(--red)">29,6K</text>`});
   s+=`<line x1="${pad}" x2="${W-pad}" y1="${y(MEDIAN)}" y2="${y(MEDIAN)}" stroke="var(--ink)" stroke-dasharray="4 3"/>`;
   s+=`<text x="${W-pad}" y="${y(MEDIAN)-4}" text-anchor="end" font-size="11" fill="var(--ink)">медіана 7,4K</text>`;
   s+=`<line x1="${pad}" x2="${W-pad}" y1="${H-pad}" y2="${H-pad}" stroke="var(--red)" stroke-width="2"/>`;
@@ -320,33 +442,291 @@ donut("donutSrc","legSrc",["Telegram","ЗМІ","Сайт Vodafone","Threads","In
 })();
 
 // list + chips
-let active="all";
-const SEV={h:"Критично",m:"Середній",l:"Низький"};
-function render(){
-  const list=mentions.filter(m=>active==="all"||m.cat===active);
-  document.getElementById("rows").innerHTML=list.length?list.map(m=>`<tr>
-    <td>${m.dApprox?"≈ ":""}${fmt(m.d)}</td>
-    <td><span class="sev ${m.sev}">${SEV[m.sev]}</span></td>
-    <td><span class="tag">${CATS[m.cat]}</span></td>
-    <td class="what">${esc(m.what)}</td>
-    <td><a href="${m.url}" target="_blank" rel="noopener">${m.site}</a><br><span class="note">${m.src}</span></td></tr>`).join("")
-    :`<tr><td colspan="5">У цій темі згадок немає. Оберіть «Усі», щоб побачити решту.</td></tr>`;
+let active="all",activeCity="all",activeSev="all";
+const SEV={h:"Висока",m:"Середня",l:"Низька"};
+const SEV_W={h:3,m:2,l:1};
+const NO_CITY="__none__";
+const SORT_DEFAULT_DIR={d:"desc",sev:"desc",cat:"asc"};
+let sortState={key:"d",dir:"desc"};
+function sortCompare(key,dir){
+  const mul=dir==="asc"?1:-1;
+  return (a,b)=>{
+    let av,bv;
+    if(key==="sev"){av=SEV_W[a.sev];bv=SEV_W[b.sev]}
+    else if(key==="cat"){av=CATS[a.cat];bv=CATS[b.cat]}
+    else{av=a.d;bv=b.d}
+    if(av<bv)return -1*mul;
+    if(av>bv)return 1*mul;
+    return 0;
+  };
 }
+function render(){
+  const list=mentions.filter(m=>
+    (active==="all"||m.cat===active)&&
+    (activeCity==="all"||(activeCity===NO_CITY?!m.city:m.city===activeCity))&&
+    (activeSev==="all"||m.sev===activeSev)
+  ).sort(sortCompare(sortState.key,sortState.dir));
+  document.getElementById("rows").innerHTML=list.length?list.map(m=>`<tr>
+    <td data-label="Дата">${m.dApprox?"≈ ":""}${fmt(m.d)}</td>
+    <td data-label="Критичність"><span class="sev ${m.sev}">${SEV[m.sev]}</span></td>
+    <td data-label="Тема"><span class="tag">${CATS[m.cat]}</span></td>
+    <td data-label="Місто">${m.city?esc(m.city):"—"}</td>
+    <td class="what" data-label="Що сталося">${esc(m.what)}</td>
+    <td data-label="Джерело"><a href="${m.url}" target="_blank" rel="noopener">${m.site}</a><br><span class="note">${m.src}</span></td></tr>`).join("")
+    :`<tr><td colspan="6">За цими фільтрами згадок немає. Скиньте фільтр(и) на «Усі», щоб побачити решту.</td></tr>`;
+}
+function updateSortIndicators(){
+  document.querySelectorAll(".sortbtn").forEach(btn=>{
+    const th=btn.closest("th"),key=btn.dataset.sort,ind=btn.querySelector(".sort-ind");
+    if(key===sortState.key){
+      th.setAttribute("aria-sort",sortState.dir==="asc"?"ascending":"descending");
+      ind.textContent=sortState.dir==="asc"?"▲":"▼";
+    }else{
+      th.setAttribute("aria-sort","none");
+      ind.textContent="";
+    }
+  });
+}
+document.querySelectorAll(".sortbtn").forEach(btn=>btn.addEventListener("click",()=>{
+  const key=btn.dataset.sort;
+  if(sortState.key===key)sortState.dir=sortState.dir==="asc"?"desc":"asc";
+  else sortState={key,dir:SORT_DEFAULT_DIR[key]};
+  updateSortIndicators();render();
+}));
+updateSortIndicators();
 const chipData=[["all","Усі ("+mentions.length+")"],...Object.keys(CATS).map(k=>[k,`${CATS[k]} (${byCat[k]||0})`])];
 const chips=document.getElementById("chips");
 chips.innerHTML=chipData.map(([k,l])=>`<button class="chip" type="button" data-k="${k}" aria-pressed="${k==="all"}">${l}</button>`).join("");
 chips.addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;active=b.dataset.k;
   chips.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",c===b));render()});
+
+const byCity={};mentions.forEach(m=>{const k=m.city||NO_CITY;byCity[k]=(byCity[k]||0)+1});
+const cityKeys=Object.keys(byCity).filter(k=>k!==NO_CITY).sort((a,b)=>a.localeCompare(b,"uk"));
+const cityData=[["all","Усі ("+mentions.length+")"],...cityKeys.map(k=>[k,`${k} (${byCity[k]})`]),
+  ...(byCity[NO_CITY]?[[NO_CITY,`Без міста (${byCity[NO_CITY]})`]]:[])];
+const cityChips=document.getElementById("cityChips");
+cityChips.innerHTML=cityData.map(([k,l])=>`<button class="chip" type="button" data-k="${k}" aria-pressed="${k==="all"}">${l}</button>`).join("");
+cityChips.addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;activeCity=b.dataset.k;
+  cityChips.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",c===b));render()});
+
+const bySev={};mentions.forEach(m=>bySev[m.sev]=(bySev[m.sev]||0)+1);
+const sevData=[["all","Усі ("+mentions.length+")"],...Object.keys(SEV).map(k=>[k,`${SEV[k]} (${bySev[k]||0})`])];
+const sevChips=document.getElementById("sevChips");
+sevChips.innerHTML=sevData.map(([k,l])=>`<button class="chip" type="button" data-k="${k}" aria-pressed="${k==="all"}">${l}</button>`).join("");
+sevChips.addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;activeSev=b.dataset.k;
+  sevChips.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",c===b));render()});
+
 render();
 
 document.getElementById("filtered").innerHTML=filtered.map(f=>`<li><b>${f.why}.</b> ${esc(f.txt)} <a href="${f.url}" target="_blank" rel="noopener">джерело</a></li>`).join("");
 
 // theme toggle
+function isDarkNow(){
+  const cur=document.documentElement.getAttribute("data-theme");
+  return cur?cur==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
+}
+function updateTone(){
+  document.getElementById("tone").textContent=isDarkNow()?"червоно-чорних":"червоно-білих";
+}
 document.getElementById("themeBtn").addEventListener("click",()=>{
-  const r=document.documentElement,cur=r.getAttribute("data-theme");
-  const dark=cur?cur==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
-  r.setAttribute("data-theme",dark?"light":"dark");
+  document.documentElement.setAttribute("data-theme",isDarkNow()?"light":"dark");
+  updateTone();
 });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{
+  if(!document.documentElement.getAttribute("data-theme"))updateTone();
+});
+updateTone();
+
+// tabs
+const tabBtns=document.querySelectorAll(".tabbtn");
+tabBtns.forEach(btn=>btn.addEventListener("click",()=>{
+  tabBtns.forEach(b=>b.setAttribute("aria-selected",b===btn?"true":"false"));
+  document.getElementById("view-dash").hidden=btn.dataset.tab!=="dash";
+  document.getElementById("view-chat").hidden=btn.dataset.tab!=="chat";
+  if(btn.dataset.tab==="chat")document.getElementById("chatInput").focus();
+}));
+
+// ---- AI-аналітик: локальні звіти зі знімка (без зовнішніх LLM-викликів) ----
+function shiftDate(d,days){const dt=new Date(d+"T00:00:00Z");dt.setUTCDate(dt.getUTCDate()+days);return dt.toISOString().slice(0,10)}
+function daysBefore(d,ref){return Math.round((new Date(ref+"T00:00:00Z")-new Date(d+"T00:00:00Z"))/86400000)}
+function inWindow(d,from,to){return d>=from&&d<=to}
+const STATUS_LABEL={open:"відкрито",resolved:"вирішено"};
+
+function reportLastDay(){
+  const from=shiftDate(SNAPSHOT_DATE,-1);
+  const recent=mentions.filter(m=>!m.dApprox&&inWindow(m.d,from,SNAPSHOT_DATE));
+  let html=`<h4>Що сталося за останню добу</h4>`;
+  html+=`<p>Вікно: ${fmt(from)}–${fmt(SNAPSHOT_DATE)}. Знімок статичний, тому «зараз» тут — дата збору, а не сьогоднішній день.</p>`;
+  if(recent.length===0){
+    const latest=[...mentions].sort((a,b)=>new Date(b.d)-new Date(a.d))[0];
+    html+=`<p><b>За цей період нових негативних згадок у знімку не зафіксовано.</b> Порожній звіт — теж результат: це означає лише, що в межах перевірених джерел (Telegram-канал, вебпошук ЗМІ, сайт vodafone.ua) нових сигналів не знайдено, а не що в реальності нічого не сталося.</p>`;
+    html+=`<p>Найсвіжіший сигнал у знімку: ${fmt(latest.d)}${latest.dApprox?" (дата приблизна)":""} — «${esc(latest.what)}» (<a href="${latest.url}" target="_blank" rel="noopener">${latest.site}</a>), це ${daysBefore(latest.d,SNAPSHOT_DATE)} дн. до дати збору.</p>`;
+  }else{
+    html+=`<ul>`+recent.map(m=>`<li><span class="sev ${m.sev}">${SEV[m.sev]}</span> <span class="tag">${CATS[m.cat]}</span> ${esc(m.what)} — <a href="${m.url}" target="_blank" rel="noopener">${m.site}</a></li>`).join("")+`</ul>`;
+  }
+  return html;
+}
+
+function reportRisks(){
+  const weight={h:3,m:2,l:1};
+  const ranked=[...mentions].sort((a,b)=>weight[b.sev]-weight[a.sev]||new Date(b.d)-new Date(a.d)).slice(0,4);
+  let html=`<h4>Головні ризики</h4>`;
+  html+=`<p>Критичність (висока/середня/низька) — мітка зі знімка за охопленням і темою публікації, а не калібрована ймовірність кризи.</p><ul>`;
+  ranked.forEach(m=>{
+    const st=m.status?STATUS_LABEL[m.status]:"статус не зафіксовано в знімку";
+    html+=`<li><span class="sev ${m.sev}">${SEV[m.sev]}</span> ${fmt(m.d)} · <span class="tag">${CATS[m.cat]}</span> ${esc(m.what)} — ${st}. <a href="${m.url}" target="_blank" rel="noopener">${m.site}</a></li>`;
+  });
+  html+=`</ul>`;
+  const open=mentions.filter(m=>m.status==="open");
+  html+=open.length?`<p>Відкритих (без підтвердженого закриття) сигналів: ${open.length} — найсвіжіший: «${esc(open[0].what)}».</p>`:`<p>Жоден сигнал у знімку не позначений як відкритий; для решти статус просто невідомий, а не «вирішено».</p>`;
+  return html;
+}
+
+function reportTrending(){
+  const byCat=Object.keys(CATS).map(k=>[k,mentions.filter(m=>m.cat===k).length]).sort((a,b)=>b[1]-a[1]);
+  const win1From=shiftDate(SNAPSHOT_DATE,-30),win2From=shiftDate(SNAPSHOT_DATE,-60);
+  const last30=mentions.filter(m=>inWindow(m.d,win1From,SNAPSHOT_DATE));
+  const prev30=mentions.filter(m=>inWindow(m.d,win2From,win1From));
+  let html=`<h4>Теми, що набирають популярність</h4>`;
+  html+=`<p>Розподіл за темою в усьому знімку (${mentions.length} згад.): ${byCat.map(([k,v])=>`${CATS[k]} — ${v}`).join(", ")}.</p>`;
+  html+=`<p>${fmt(win1From)}–${fmt(SNAPSHOT_DATE)}: ${last30.length} згад. · попередні 30 днів: ${prev30.length} згад.</p>`;
+  html+=`<p><b>Даних замало для впевненого висновку про тренд.</b> Усього ${mentions.length} згадок за весь знімок, жодна тема не набирає ≥3 точки в межах одного 30-денного вікна. `;
+  if(last30.length>prev30.length)html+=`Що видно обережно: трохи більше сигналів за останній місяць (${last30.map(m=>CATS[m.cat]).join(", ")}) порівняно з попереднім — це може бути й випадковість на такій вибірці.`;
+  else if(last30.length===0)html+=`За останні 30 днів до знімка нових сигналів не було.`;
+  else html+=`Суттєвої зміни між вікнами не видно.`;
+  html+=`</p>`;
+  return html;
+}
+
+function reportCompetitors(){
+  const compRe=/kyivstar|київстар|lifecell|лайфсел/i;
+  const compMentions=mentions.filter(m=>compRe.test(m.what));
+  const compFiltered=filtered.filter(f=>compRe.test(f.why+" "+f.txt));
+  let html=`<h4>Що роблять конкуренти</h4>`;
+  if(compMentions.length===0){
+    html+=`<p><b>У цьому знімку немає підтверджених згадок про дії Kyivstar чи lifecell, повʼязаних із Vodafone.</b> Порожній результат тут — чесний наслідок того, що окремий конкурентний моніторинг не підключено, а не доказ бездіяльності конкурентів.</p>`;
+  }else{
+    html+=`<ul>`+compMentions.map(m=>`<li>${fmt(m.d)} · ${esc(m.what)} — <a href="${m.url}" target="_blank" rel="noopener">${m.site}</a></li>`).join("")+`</ul>`;
+  }
+  if(compFiltered.length){
+    html+=`<p>Відсіяно як шум під час перевірки: ${compFiltered.map(f=>`«${esc(f.txt)}» — ${f.why.toLowerCase()} (<a href="${f.url}" target="_blank" rel="noopener">джерело</a>)`).join("; ")}.</p>`;
+  }
+  html+=`<p>Джерело для системного відстеження Kyivstar/lifecell у цьому знімку не підключене — це відкрите завдання для наступної ітерації, а не виміряний нуль активності конкурентів.</p>`;
+  return html;
+}
+
+function reportFull(){
+  const from=shiftDate(SNAPSHOT_DATE,-1);
+  const recent=mentions.filter(m=>!m.dApprox&&inWindow(m.d,from,SNAPSHOT_DATE));
+  const latest=[...mentions].sort((a,b)=>new Date(b.d)-new Date(a.d))[0];
+  const weight={h:3,m:2,l:1};
+  const topRisks=[...mentions].sort((a,b)=>weight[b.sev]-weight[a.sev]||new Date(b.d)-new Date(a.d)).slice(0,2);
+  const open=mentions.filter(m=>m.status==="open");
+  const byCat=Object.keys(CATS).map(k=>[k,mentions.filter(m=>m.cat===k).length]).sort((a,b)=>b[1]-a[1]);
+  const compCount=mentions.filter(m=>/kyivstar|київстар|lifecell|лайфсел/i.test(m.what)).length;
+
+  let html=`<h4>Загальний звіт по дашборду</h4>`;
+  html+=`<p>Знімок від ${fmt(SNAPSHOT_DATE)}: ${mentions.length} негативних згадок, ще ${filtered.length} відсіяно як шум. Читається за дві хвилини; за деталями й цитатами — питайте про кожен пункт окремо.</p>`;
+
+  html+=`<p><b>За останню добу (${fmt(from)}–${fmt(SNAPSHOT_DATE)}):</b> `;
+  html+=recent.length===0
+    ?`нових сигналів не зафіксовано. Найсвіжіший у знімку — ${fmt(latest.d)}${latest.dApprox?" (дата приблизна)":""}: «${esc(latest.what)}» (${CATS[latest.cat]}), ${daysBefore(latest.d,SNAPSHOT_DATE)} дн. тому.`
+    :recent.map(m=>`<span class="sev ${m.sev}">${SEV[m.sev]}</span> ${CATS[m.cat]} — ${esc(m.what)}`).join("; ")+".";
+  html+=`</p>`;
+
+  html+=`<p><b>Головні ризики:</b> `+topRisks.map(m=>`<span class="sev ${m.sev}">${SEV[m.sev]}</span> ${CATS[m.cat]} (${fmt(m.d)}${m.status?", "+STATUS_LABEL[m.status]:", статус невідомий"})`).join("; ")+
+    (open.length?` — відкритих без підтвердженого закриття: ${open.length}.`:` — жоден не позначений як відкритий у знімку.`)+`</p>`;
+
+  html+=`<p><b>Теми:</b> ${byCat.map(([k,v])=>`${CATS[k]} — ${v}`).join(", ")}. На ${mentions.length} згадках загалом впевнений тренд по темах виділити не можна — вибірка замала.</p>`;
+
+  html+=`<p><b>Конкуренти:</b> ${compCount===0?"підтверджених згадок про Kyivstar/lifecell у знімку немає — окремий конкурентний моніторинг не підключено, це не вимірений нуль активності.":compCount+" підтверджені згадки."}</p>`;
+
+  html+=`<p class="note" style="margin:6px 0 0">Хочете глибше — запитайте прямо про «ризики», «тренди», «конкурентів» або «останню добу»: там повні цитати й посилання на джерела.</p>`;
+  return html;
+}
+
+function helpMessage(){
+  return `<h4>Що я вмію</h4><p>Я рахую звіти лише з цього знімка (<code>data.js</code>, ${mentions.length} негативних згадок + ${filtered.length} відсіяних, дата збору ${fmt(SNAPSHOT_DATE)}). Питайте вільним текстом — наприклад:</p>
+  <ul><li>«зроби звіт» / «що у нас на дашборді» — загальний огляд усього одразу;</li><li>що сталося за останню добу;</li><li>головні ризики;</li><li>теми, що набирають популярність;</li><li>що роблять конкуренти.</li></ul>
+  <p>Будь-яке інше формулювання теж отримає відповідь — за замовчуванням я даю загальний огляд дашборду, а не «не зрозумів». Я не прогнозую майбутнє, не бачу Threads/Instagram/X (не підключені в цьому знімку) і не вигадую цифр — там, де даних мало, кажу про це прямо.</p>`;
+}
+
+function classifyIntent(text){
+  const t=text.toLowerCase();
+  if(/(допомог|що ти вмі|команд|\bhelp\b)/.test(t))return "help";
+  if(/(добу|24\s*год|сьогодні|вчора|останн(ій|і)\s*(день|доба)|за день)/.test(t))return "lastday";
+  if(/(ризик|критичн|небезпе|загроз|найгірш)/.test(t))return "risks";
+  if(/(тренд|популярн|зроста|набира|\bтем[аи]\b)/.test(t))return "trending";
+  if(/(конкурент|kyivstar|київстар|lifecell|лайфсел)/.test(t))return "competitors";
+  return "full";
+}
+function answerFor(intent){
+  switch(intent){
+    case "lastday":return reportLastDay();
+    case "risks":return reportRisks();
+    case "trending":return reportTrending();
+    case "competitors":return reportCompetitors();
+    case "help":return helpMessage();
+    default:return reportFull();
+  }
+}
+
+const chatlog=document.getElementById("chatlog");
+function addMsg(role,html){
+  const div=document.createElement("div");
+  div.className="msg "+role;
+  div.innerHTML=html;
+  chatlog.appendChild(div);
+  chatlog.scrollTop=chatlog.scrollHeight;
+}
+// Мовонезалежна (укр./рос./англ.) евристика: без словника не відрізнити "слово" від
+// вигаданого набору літер напевно, тож перевіряємо ознаки, спільні для реальних слів
+// у цих алфавітах — наявність голосних і відсутність довгих приголосних/однакових серій.
+const VOWELS="aeiouyаеєиіїоуюя";
+function looksLikeWord(tok){
+  const t=tok.toLowerCase();
+  if(t.length<2)return false;
+  if(![...t].some(c=>VOWELS.includes(c)))return false;
+  if(/(.)\1{3,}/.test(t))return false;
+  if(new RegExp(`[^${VOWELS}\\d\\s]{5,}`).test(t))return false;
+  return true;
+}
+// Одне-єдине слово ("тест", "привіт", "ку") — не запит на аналітику, навіть якщо це
+// реальне слово. Пропускаємо його лише коли це впізнане ключове слово теми/звіту.
+const REPORT_WORD=/^(звіт|аналіз|огляд|дайджест|брифінг|підсумок|самарі|зведення|дашборд)$/i;
+function isSingleWordRecognized(word){
+  return classifyIntent(word)!=="full"||REPORT_WORD.test(word);
+}
+function isInvalidQuery(text){
+  const tokens=text.trim().match(/[a-zа-яіїєґ']+/gi)||[];
+  if(tokens.length===0)return true;
+  if(!tokens.some(looksLikeWord))return true;
+  if(tokens.length===1&&!isSingleWordRecognized(tokens[0]))return true;
+  return false;
+}
+function ask(text){
+  if(!text.trim())return;
+  addMsg("user",esc(text));
+  if(isInvalidQuery(text)){
+    addMsg("bot",`<h4>Некоректний запит</h4><p>Не вдалося розпізнати текст питання «${esc(text)}». Напишіть словами, наприклад «зроби звіт» або «головні ризики».</p>`);
+    return;
+  }
+  addMsg("bot",answerFor(classifyIntent(text),text)+`<p><b>Хочете дізнатися більше?</b></p>`);
+}
+document.getElementById("chatform").addEventListener("submit",e=>{
+  e.preventDefault();
+  const input=document.getElementById("chatInput");
+  ask(input.value);
+  input.value="";
+  input.focus();
+});
+const SUGGESTIONS=["Що сталося за останню добу?","Головні ризики","Теми, що набирають популярність","Що роблять конкуренти"];
+document.getElementById("suggest").innerHTML=SUGGESTIONS.map((label,i)=>`<button class="chip" type="button" data-i="${i}">${label}</button>`).join("");
+document.getElementById("suggest").addEventListener("click",e=>{
+  const b=e.target.closest(".chip");if(!b)return;
+  ask(SUGGESTIONS[+b.dataset.i]);
+});
+addMsg("bot",`Вітаю! Я — AI-аналітик цього дашборду (знімок від ${fmt(SNAPSHOT_DATE)}, ${mentions.length} негативних згадок, ${filtered.length} відсіяних). Напишіть будь-що своїми словами, наприклад «зроби звіт» — за замовчуванням я проаналізую весь дашборд і дам загальний огляд. Або оберіть готове питання нижче для конкретики.`);
 </script>
 </body>
 </html>

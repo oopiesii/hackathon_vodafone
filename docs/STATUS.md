@@ -100,6 +100,7 @@
 - Піднято окремий постійний PostgreSQL 18 і NATS JetStream у Docker; застосовано міграції, розділено runtime grants. API, collector, processor працюють з restart policy.
 - Створено нового `admin@hire.qpon`; випадковий початковий пароль у `/etc/ufv/admin-bootstrap.txt`, root-only. Паролі тимчасової Claude-БД не підходять.
 - `hire.qpon` направлено виключно на UFV через спільний Caddy. `*.hire.qpon` повертає 404. Решту доменних блоків не змінено; `https://h1hs.com/api/health` повертає ok. DNS уже вказував на сервер, зміни в Cloudflare dashboard не знадобилися.
+- Командою (окремі коміти на GitHub, злиті 2026-09-19) у прототип `vodafone-monitor/` додано вкладку **AI-аналітик** зі звітами зі знімка, логотип і оновлені дані; синтаксис перевірено `node --check`. Саме ця версія прототипа стала основою showcase.
 - Оновлено AGENTS, README, контекст, питання, план, архітектуру, інструкції запуску/Telegram/deployment. Commit/push не виконувалися.
 
 ## Перевірено
