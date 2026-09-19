@@ -42,11 +42,11 @@ const server = createServer(async (req, res) => {
     }
     if (path === '/api/shared/redeem') {
       let body = ''; for await (const chunk of req) body += chunk;
-      share = JSON.parse(body).token === 'synthetic-narrow' ? 'narrow' : 'broad'; data = { success: true };
+      share = JSON.parse(body).token === 'synthetic-narrow' ? 'narrow' : 'broad'; data = { success: true, scope_id: share };
     }
     if (path === '/api/shared/me') {
       if (share === 'invalid') { res.writeHead(401, { 'content-type': 'application/json' }); res.end('{"error":"invalid_or_expired_link"}'); return; }
-      data = { name: 'Синтетичне посилання', scope: 'full', workflow_id: '1' };
+      data = { name: 'Синтетичне посилання', scope: 'full', workflow_id: '1', scope_id: share };
     }
     if (path === '/api/shared/feed') {
       if (share === 'narrow') { res.writeHead(503, { 'content-type': 'application/json' }); res.end('{"error":"unavailable"}'); return; }

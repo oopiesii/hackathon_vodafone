@@ -20,8 +20,8 @@ type FeedData = {
 };
 type Detail = { document: Item; telegram?:TelegramDetail; context: { text: string; source_url: string } | null };
 
-export function Feed({ me, shared = false, workflowId = "1", title = "Стрічка", badge }: {
-  me?: Me | undefined; shared?: boolean; workflowId?: string; title?: string; badge?: ReactNode;
+export function Feed({ me, shared = false, shareScopeId, workflowId = "1", title = "Стрічка", badge }: {
+  me?: Me | undefined; shared?: boolean; shareScopeId?: string; workflowId?: string; title?: string; badge?: ReactNode;
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get("q") || "", topic = searchParams.get("topic") || "", kind = searchParams.get("kind") || "";
@@ -36,9 +36,10 @@ export function Feed({ me, shared = false, workflowId = "1", title = "Стріч
   const [detail, setDetail] = useState<Detail | null>(null), [detailError, setDetailError] = useState("");
   const dialog = useRef<HTMLDialogElement>(null);
   const prefix = shared ? "/shared" : "";
+  const access = shared ? { headers: { "x-ufv-share-scope": shareScopeId ?? "" } } : undefined;
   const params = new URLSearchParams(searchParams);
   Object.entries({ workflow_id: workflow, q, topic, kind, decision, before }).forEach(([key, value]) => params.set(key, value));
-  const feed = useQuery({ queryKey: ["feed", shared, params.toString()], queryFn: () => api<FeedData>(`${prefix}/feed?${params}`), refetchInterval: 30000 });
+  const feed = useQuery({ queryKey: ["feed", shared, shareScopeId, params.toString()], queryFn: () => api<FeedData>(`${prefix}/feed?${params}`, access), refetchInterval: 30000 });
   const workspaces = useQuery({ queryKey: ["workflows"], queryFn: () => api<{ items: { id: string; name: string }[] }>("/workflows"), enabled: !shared });
   // Зміна будь-якого фільтра повертає до найновіших матеріалів.
   const filter = (set: (value: string) => void) => (value: string) => set(value);
@@ -46,7 +47,7 @@ export function Feed({ me, shared = false, workflowId = "1", title = "Стріч
   async function open(id: string) {
     setDetailError("");
     try {
-      setDetail(await api<Detail>(`${prefix}/documents/${id}`));
+      setDetail(await api<Detail>(`${prefix}/documents/${id}`, access));
       dialog.current?.showModal();
     } catch (e) { setDetailError(errorText(e, "Не вдалося відкрити матеріал.")); }
   }

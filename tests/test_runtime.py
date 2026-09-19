@@ -127,6 +127,7 @@ def test_roles_origins_share_scope_revocation(prepared):
     assert viewer.post('/api/auth/admin/create-user',json={'name':'No','email':'no@ufv.test','password':'Test-test-test','role':'admin'}).status_code==403
     shared=client.post('/api/admin/shares',json={'workflow_id':1,'name':'Post-only checks','scope':'posts','channel_ids':[s['id']]}).json()
     assert anonymous.post('/api/shared/redeem',json={'token':shared['url'].split('#')[1]}).status_code==200
+    anonymous.headers['x-ufv-share-scope']=str(shared['id'])
     items=anonymous.get('/api/shared/feed').json()['items']
     assert len(items)==1 and items[0]['kind']=='post'
     comment=db.one("select id from core.mentions where kind='comment'")['id']
@@ -136,10 +137,34 @@ def test_roles_origins_share_scope_revocation(prepared):
     assert anonymous.get('/api/shared/feed').status_code==401
     summary=client.post('/api/admin/shares',json={'workflow_id':1,'name':'Summary','scope':'summary'}).json()
     anonymous.post('/api/shared/redeem',json={'token':summary['url'].split('#')[1]})
+    anonymous.headers['x-ufv-share-scope']=str(summary['id'])
     assert anonymous.get('/api/shared/feed').json()['items']==[]
     assert anonymous.get('/api/shared/feed?q=Vodafone').status_code==403
     assert anonymous.get('/api/shared/documents/1').status_code==403
     anonymous.close();viewer.close()
+
+
+def test_shared_requests_bound_to_redeemed_link(prepared):
+    _,client,cfg,_,_=prepared
+    broad=client.post('/api/admin/shares',json={'workflow_id':1,'name':'Broad binding checks','scope':'full'}).json()
+    narrow=client.post('/api/admin/shares',json={'workflow_id':1,'name':'Narrow binding checks','scope':'summary'}).json()
+    with httpx.Client(base_url=cfg['PUBLIC_URL']) as public:
+        response=public.post('/api/shared/redeem',json={'token':broad['url'].split('#')[1]})
+        assert response.status_code==200
+        assert response.json()['scope_id']==str(broad['id'])
+        old_cookies=httpx.Cookies(public.cookies)
+        assert public.get('/api/shared/feed').status_code==409
+        assert public.get('/api/shared/me').json()['scope_id']==str(broad['id'])
+        public.post('/api/shared/redeem',json={'token':narrow['url'].split('#')[1]})
+        public.headers['x-ufv-share-scope']=str(narrow['id'])
+        assert public.get('/api/shared/feed').status_code==200
+        assert public.get('/api/shared/me').json()['scope_id']==str(narrow['id'])
+        # An older Set-Cookie, or another tab, must not expand the bound scope.
+        public.cookies=old_cookies
+        for path in ['/api/shared/me','/api/shared/feed','/api/shared/feed?q=Vodafone','/api/shared/documents/1']:
+            response=public.get(path)
+            assert response.status_code==409
+            assert response.json()=={'error':'share_scope_changed'}
 
 
 @pytest.mark.asyncio

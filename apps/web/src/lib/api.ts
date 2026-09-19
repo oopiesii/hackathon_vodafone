@@ -29,6 +29,7 @@ const ERRORS: Record<string, string> = {
   duplicate_or_linked_record: "Такий запис уже існує або пов’язаний з іншими даними.",
   invalid_link: "Посилання недійсне.",
   invalid_or_expired_link: "Посилання недійсне, відкликане або його строк минув.",
+  share_scope_changed: "Доступ за посиланням змінився. Відкрийте потрібне посилання знову.",
   internal: "Внутрішня помилка сервера.",
 };
 
