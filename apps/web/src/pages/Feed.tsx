@@ -12,6 +12,7 @@ type Item = {
   source_kind:string; id: string; text: string; summary: string; source_url: string; published_at: string | null; fetched_at: string;
   processed_at: string; edited_at: string | null; kind: string; topic: string; channel_title: string; reason: string;
   duplicate_of: string | null; context_id: string | null; manual_decision: string | null;
+  classifier?:string; model?:string; evidence_quote?:string|null;
 };
 type FeedData = {
   items: Item[]; total: { count: number; last_processed_at: string | null }; kinds: { kind: string; count: number }[];
@@ -118,6 +119,7 @@ export function Feed({ me, shared = false, workflowId = "1", title = "Стріч
                     <option value="visible">Прийняті й на перевірці</option>
                     <option value="review">На перевірці</option>
                     <option value="rejected">Відсіяне</option>
+                    <option value="pending">Очікує семантичної перевірки</option>
                     <option value="all">Усе</option>
                   </select>
                 </Field>
@@ -154,10 +156,13 @@ export function Feed({ me, shared = false, workflowId = "1", title = "Стріч
                 <Badge tone="secondary">{item.source_kind === "rss" ? "RSS-анонс" : item.kind === "post" ? "Пост" : item.kind === "group_message" ? "Повідомлення групи" : "Коментар"}</Badge>
                 <Badge>{TOPICS[item.topic] ?? item.topic}</Badge>
                 {item.manual_decision && <Badge tone="info">Рішення людини</Badge>}
+                {item.classifier === 'semantic' && <Badge tone="info" title={item.model ?? undefined}>AI-відбір</Badge>}
                 <time className="item-time" title="Опубліковано">{formatDate(item.published_at)}</time>
               </div>
               {item.source_kind==='rss'&&<a href={item.source_url} target="_blank" rel="noopener noreferrer">Джерело: {item.channel_title}</a>}
-                  <p className="item-text">{excerpt(item.text)}</p>
+              {item.classifier === 'semantic' && <p className="item-summary"><strong>Висновок AI:</strong> {item.summary}</p>}
+              <p className="item-text">{excerpt(item.text)}</p>
+              {item.evidence_quote && <blockquote className="quote"><small>Цитата-підстава</small><br />{item.evidence_quote}</blockquote>}
               {item.source_url?.startsWith('https://www.kmu.gov.ua/')&&<p className="note">Урядовий портал · <a href="https://creativecommons.org/licenses/by/4.0/deed.uk" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> · Анонс очищено та скорочено.</p>}
               <p className="item-reason">
                 {item.reason}
@@ -196,6 +201,8 @@ export function Feed({ me, shared = false, workflowId = "1", title = "Стріч
         {detail && (
           <>
             <Section title="Матеріал">
+              {detail.document.classifier === 'semantic' && <p><strong>Висновок AI:</strong> {detail.document.summary}</p>}
+              <p className="note">{detail.document.reason}</p>
               {detail.document.source_kind==='rss'&&<p className="note">Анонс RSS. Повний текст статті не отримано. <a href={detail.document.source_url} target="_blank" rel="noopener noreferrer">Джерело: {detail.document.channel_title}</a></p>}
               <blockquote className="quote">{detail.document.text}</blockquote>
               <div><a className="btn btn-ghost btn-sm" href={detail.document.source_url} target="_blank" rel="noopener noreferrer">Оригінал<ExternalLink size={14} aria-hidden="true" /></a></div>

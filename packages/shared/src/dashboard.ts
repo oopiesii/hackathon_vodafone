@@ -1,6 +1,6 @@
 /** Versioned dashboard contract. Counts refer to the authenticated role and workflow only. */
 export type DashboardWindow = '24h' | '7d' | '30d';
-export type DashboardMetric = { value:number|null; unit:string; href:string; series:number[]; measured:number; note:string };
+export type DashboardMetric = { value:number|null; unit:string; href:string; series:number[]; measured:number; note:string; attention?:number; attention_note?:string };
 export type DashboardBucket = { at:string; count:number; topics:Record<string,number>; href:string };
 export type DashboardSignal = { id:string; title:string; topic:string; brand:string; level:'h'|'m'|'l'; count:number; sources:number; spread:number; action:'none'|'investigating'|'responding'|'resolved'; href:string; evidence:Array<{id:string;url:string;quote:string;published_at:string|null}>; reason:string };
 export type DashboardResponse = {
@@ -21,6 +21,9 @@ export type DashboardResponse = {
  lag_by_service:Array<{service:string;median_seconds:number|null;measured:number;href:string}>;
  freshness:Array<{service:string;enabled:boolean;last_success_at:string|null;heartbeat_at:string|null}>;
  competitors:Array<{brand:string;count:number;negative:number;href:string}>;
- ai:{status:'waiting_key'|'rules';label:string;summary:string;href:string};
+ ai:{status:'waiting_key'|'rules'|'semantic';label:string;summary:string;href:string};
+ vodafone_7d?:{count:number;href:string};
+ analysis_coverage?:{cutoff_at:string|null;pending?:number;note:string};
+ reaction_freshness?:{oldest_at:string|null;newest_at:string|null;active_seconds:number;cooling_seconds:number;sleeping_seconds:number;note:string};
  methodology:string[];
 };

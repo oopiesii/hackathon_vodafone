@@ -102,3 +102,15 @@
 
 .feed-scope{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;font-size:var(--f-sm);padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--canvas)}
 .feed-scope>span{overflow-wrap:anywhere}
+/* Explicit user request: stronger red attention states, with text and no flashing. */
+.metric-attention-1{background:color-mix(in srgb,var(--danger-fg) 5%,var(--card));border-color:color-mix(in srgb,var(--danger-fg) 35%,var(--border))}
+.metric-attention-2{background:color-mix(in srgb,var(--danger-fg) 11%,var(--card));border-color:color-mix(in srgb,var(--danger-fg) 65%,var(--border))}
+.metric-attention-3{background:color-mix(in srgb,var(--danger-fg) 18%,var(--card));border-color:var(--danger-fg);box-shadow:inset 3px 0 0 var(--danger-fg)}
+.metric-attention-label{display:flex;align-items:center;gap:6px;color:var(--danger-fg);font-size:var(--f-xs);font-weight:600}
+.dashboard-coverage{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;padding:12px 16px;border:1px solid var(--border);border-radius:var(--radius);font-size:var(--f-sm);overflow-wrap:anywhere}
+.dashboard-coverage>span{color:var(--muted-foreground)}
+.reaction-method{font-size:var(--f-xs);line-height:1.5;margin-top:12px;color:var(--muted-foreground)}
+.reaction-method summary{cursor:pointer;min-height:32px;display:list-item}
+.reaction-method p{margin-top:8px}
+.reaction-ironic{fill:var(--data-accent);background:var(--data-accent)}
+.item-summary{font-size:var(--f-sm);line-height:1.5;margin:12px 0}

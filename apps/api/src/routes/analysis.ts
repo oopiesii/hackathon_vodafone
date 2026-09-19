@@ -6,6 +6,7 @@ import { query } from './telegram-admin.js';
 // Read the narrow operator view, never grant API access to raw tables.
 const checked=`select l.raw_item_id,l.raw_version,l.label,i.url,i.channel_title,
   i.published_at,i.source_kind,i.kind,i.source_id,
+  coalesce(ar.scope->'test_source_ids','[]'::jsonb) @> jsonb_build_array(i.source_id) is_test,
   (not i.deleted and i.version=l.raw_version and not exists(
     select 1 from jsonb_array_elements(l.label->'context_versions') cv
     left join core.incoming_items p on p.id=(cv->>'id')::bigint and p.workflow_id=$2
@@ -15,6 +16,7 @@ const checked=`select l.raw_item_id,l.raw_version,l.label,i.url,i.channel_title,
       and p.source_item_id=l.label->>'missing_parent_key' and not p.deleted
   ))) current
   from core.analysis_labels l join core.incoming_items i on i.id=l.raw_item_id
+  join core.analysis_runs ar on ar.id=l.run_id
   where l.run_id=$1 and i.workflow_id=$2`;
 
 const allowed=(value:string|undefined,values:string[],fallback='all')=>{
@@ -46,16 +48,17 @@ export const analysis = new Hono<AppEnv>()
       query(`with checked as materialized (${checked}) select
         (select count(*)::int from checked) analyzed,
         (select count(*)::int from checked where current) current,
+        (select count(*)::int from checked where is_test) test_records,
         (select coalesce(jsonb_agg(g),'[]') from (
           select label->>'decision' decision,label->>'relevance' relevance,kind,
             label->>'sentiment' sentiment,count(*)::int n
-          from checked where current group by 1,2,3,4) g) groups,
+          from checked where current and not is_test group by 1,2,3,4) g) groups,
         (select coalesce(jsonb_agg(g),'[]') from (
           select a->>'brand' brand,a->>'sentiment' sentiment,count(distinct raw_item_id)::int n
           from checked cross join lateral jsonb_array_elements(label->'aspects') a
-          where current and kind<>'post' and label->>'decision'='relevant' group by 1,2) g) brands,
+          where current and not is_test and kind<>'post' and label->>'decision'='relevant' group by 1,2) g) brands,
         (select count(distinct coalesce(label->>'semantic_group',raw_item_id::text))::int
-          from checked where current and label->>'decision'='relevant') unique_relevant`,[run.id,workflow]),
+          from checked where current and not is_test and label->>'decision'='relevant') unique_relevant`,[run.id,workflow]),
       query(`with checked as (${checked}) select *,count(*) over()::int total_matching from checked
         where current and label->>'decision' in ('relevant','review')
           and ($3='all' or label->>'relevance'=$3)
@@ -78,7 +81,7 @@ export const analysis = new Hono<AppEnv>()
     let brief=briefRows[0]?.brief||null,briefStale=false;
     const briefIds:number[]=brief?[...new Set<number>([...brief.findings,...brief.actions].flatMap(x=>x.evidence_ids))]:[];
     const briefEvidence=briefIds.length?await query(`with checked as (${checked}) select * from checked
-      where current and raw_item_id=any($3::bigint[])`,[run.id,workflow,briefIds]):[];
+      where current and not is_test and raw_item_id=any($3::bigint[])`,[run.id,workflow,briefIds]):[];
     if(briefIds.length!==briefEvidence.length){brief=null;briefStale=true;}
     const evidenceIds=[...new Set([...items,...briefEvidence].flatMap(x=>[
       ...x.label.evidence,...(x.label.aspects||[]).flatMap((a:any)=>a.evidence)
@@ -103,5 +106,5 @@ export const analysis = new Hono<AppEnv>()
     return c.json({run,counts,analyzed:stats.analyzed,current:stats.current,stale:stats.analyzed-stats.current,
       unique_relevant:stats.unique_relevant,items,offset,limit,total_matching:items[0]?.total_matching||0,
       relevant_posts:relevantPosts,relevant_comments:relevantComments,comment_sentiments:commentSentiments,
-      brand_sentiments:stats.brands,brief,brief_stale:briefStale,search,search_automatic:false});
+      brand_sentiments:stats.brands,test_records:stats.test_records,brief,brief_stale:briefStale,search,search_automatic:false});
   });

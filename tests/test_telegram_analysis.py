@@ -5,7 +5,7 @@ import sys
 import pytest
 
 sys.path.insert(0,str(Path(__file__).parents[1]/'scripts'))
-from analyze_telegram_agy import enrich,validate_screen,validate_details
+from analyze_telegram_agy import enrich,validate_screen,validate_details,pack,screen_payload,save_labels
 
 
 def row(id,text,parent=None,source=1,deleted=False):
@@ -51,3 +51,34 @@ def test_aspect_must_quote_own_message():
     with pytest.raises(ValueError):validate_details({'items':[label]},[rows[1]])
     label['aspects'][0]['evidence'].append({'id':2,'quote':'У мене теж'})
     assert validate_details({'items':[label]},[rows[1]])['items'][0]['id']==2
+
+
+def test_shared_parent_packing_preserves_all_messages_with_bounded_payload():
+    import json
+    rows,_=enrich([row(1,'Vodafone '+('контекст '*300))]+[row(i,'У мене теж','1') for i in range(2,102)])
+    batches=list(pack(rows[1:],byte_limit=15000))
+    assert sum(len(b) for b in batches)==100
+    assert [r['id'] for b in batches for r in b]==list(range(2,102))
+    assert len(batches)<4
+    assert all(len(json.dumps(screen_payload(b,'batch'),ensure_ascii=False).encode())<15500 for b in batches)
+
+
+def test_duplicate_comment_uses_own_evidence_ids():
+    rows,_=enrich([row(1,'Vodafone не працює',source=1),row(2,'Vodafone не працює',source=2),
+                  row(3,'У мене теж','1',source=1),row(4,'У мене теж','2',source=2)])
+    label=dict(id=3,evidence=[{'id':3,'quote':'У мене теж'},{'id':1,'quote':'Vodafone'}],
+               aspects=[{'evidence':[{'id':3,'quote':'У мене теж'},{'id':1,'quote':'Vodafone'}]}])
+    values=[]
+    class Cursor:
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def executemany(self,sql,batch):values.extend(batch)
+    class Connection:
+        def cursor(self):return Cursor()
+    save_labels(Connection(),'test-run',[rows[3]],rows[2],label,'detailed')
+    result=values[0][3].obj
+    assert result['id']==4
+    assert [e['id'] for e in result['evidence']]==[4,2]
+    assert [e['id'] for e in result['aspects'][0]['evidence']]==[4,2]
+    assert result['context_versions']==[{'id':2,'version':1}]
+    assert label['evidence'][0]['id']==3

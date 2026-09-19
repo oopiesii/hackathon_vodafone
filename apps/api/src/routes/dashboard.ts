@@ -3,6 +3,7 @@ import { HTTPException } from 'hono/http-exception';
 import { hasPermission } from '@ufv/shared/permissions';
 import type { DashboardResponse, DashboardMetric, DashboardWindow, DashboardSignal } from '@ufv/shared/dashboard';
 import { requireSession, type AppEnv } from '../auth/middleware.js';
+import { reactionAttention, criticalAttention } from '../lib/metric-attention.js';
 import { query } from './telegram-admin.js';
 
 type Item = Record<string, any>;
@@ -28,7 +29,7 @@ function reactions(items:Item[]) {
    r[NEG.has(emoji)?'negative':IRONIC.has(emoji)?'ironic':SAD.has(emoji)?'sad':'positive']+=value;r.total+=value;
   }
  }
- r.negative_share=r.total?(r.negative+r.ironic)/r.total:null;
+ r.negative_share=r.total?r.negative/r.total:null;
  return r;
 }
 function spreadGroups(items:Item[],href:(filters?:Record<string,string>)=>string){
@@ -60,38 +61,50 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
  const window=(params.window||'24h') as DashboardWindow;
  if(!['24h','7d','30d'].includes(window))throw new HTTPException(400);
  if(!(await query('select id from core.workflows where id=$1',[workflow])).length)throw new HTTPException(404);
+ const completedRuns=await query("select model,cutoff_at from core.analysis_runs where workflow_id=$1 and status='complete' order by cutoff_at desc",[workflow]);
+ const semantic=completedRuns.length>0,includeReview=review&&!semantic;
  const now=Date.now(),end=new Date(now),hours=window==='24h'?24:window==='7d'?168:720;
  // Month uses Kyiv calendar days, including today; exact boundary comes from PostgreSQL (DST-safe).
  const start=window==='30d'?new Date((await query("select (((now() at time zone 'Europe/Kyiv')::date-29)::timestamp at time zone 'Europe/Kyiv') start"))[0].start):new Date(now-hours*HOUR);
- const href=(filters:Record<string,string>={})=>'/feed?'+new URLSearchParams({workflow_id:workflow,decision:review?'visible':'accepted',from:iso(start),until:iso(end),window,...filters});
+ const href=(filters:Record<string,string>={})=>'/feed?'+new URLSearchParams({workflow_id:workflow,decision:includeReview?'visible':'accepted',from:iso(start),until:iso(end),window,...filters});
  const inboxHref=(filters:Record<string,string>={})=>'/inbox?'+new URLSearchParams({workflow_id:workflow,from:iso(start),until:iso(end),window,...filters});
  const metric=(value:number|null,unit:string,link:string,series:number[]=[],measured=0,note=''):DashboardMetric=>({value,unit,href:link,series,measured,note});
- const [freshnessRows,rollups,rawRows]=await Promise.all([
+ const [freshnessRows,rollups,rawRows,stats,watchPolicy,brandWeek,rxTimes]=await Promise.all([
   query(`select s.kind service,bool_or(s.enabled and w.enabled and coalesce(md.enabled,false)) enabled,
    max(case when s.kind='telegram' then st.last_success_at else rs.last_success_at end) last_success_at,
    max(svc.heartbeat_at) heartbeat_at from core.sources s join core.workflows w on w.id=s.workflow_id
    left join core.modules md on md.name=s.kind left join raw.source_state st on st.source_id=s.id
    left join core.rss_status rs on rs.id=s.id left join raw.service_status svc on svc.name=case when s.kind='rss' then 'collector-rss' else 'collector-telegram' end
    where s.workflow_id=$1 group by s.kind`,[workflow]),
-  window==='30d'?query(`select r.*,r.day::text day_key,s.title,s.external_id from core.daily_rollups r join core.sources s on s.id=r.source_id
+  window==='30d'?query(`select r.*,r.day::text day_key,s.title,s.external_id from core.curated_daily_rollups r join core.sources s on s.id=r.source_id
     where r.workflow_id=$1 and r.day>=($2::timestamptz at time zone 'Europe/Kyiv')::date
-    ${review?'':"and r.decision='accepted'"} order by r.day`,[workflow,iso(start)]):Promise.resolve([]),
-  window==='30d'?Promise.resolve([]):query(`select * from core.dashboard_items where workflow_id=$1 and event_at>=$2 and event_at<=$3
-    and decision<>'deleted' ${review?'':"and decision='accepted'"} order by event_at,id`,[workflow,new Date(now-7*24*HOUR),end]),
+    ${includeReview?'':"and r.decision='accepted'"} order by r.day`,[workflow,iso(start)]):Promise.resolve([]),
+  window==='30d'?Promise.resolve([]):query(`select * from core.curated_visible_items where workflow_id=$1 and event_at>=$2 and event_at<=$3
+    and decision=any($4::text[]) order by event_at,id`,[workflow,new Date(now-7*24*HOUR),end,includeReview?['accepted','review']:['accepted']]),
+  query(`select decision,source_kind,count(*)::int count,
+    coalesce(array_agg(lag_seconds) filter(where lag_seconds is not null),'{}') lag_samples
+    from core.curated_items where workflow_id=$1 and event_at>=$2 and event_at<=$3 and decision<>'deleted'
+    ${review?'':"and decision='accepted'"} group by decision,source_kind`,[workflow,start,end]),
+  query('select active_seconds,cooling_seconds,sleeping_seconds from core.telegram_watch_policies where workflow_id=$1',[workflow]),
+  query(`select count(*)::int count from core.curated_visible_items where workflow_id=$1 and event_at>=$2 and event_at<=$3
+    and decision='accepted' and brand='vodafone' and (kind<>'comment' or watch_active)`,[workflow,new Date(now-7*24*HOUR),end]),
+  query(`select min(metrics_observed_at) oldest_at,max(metrics_observed_at) newest_at from core.curated_visible_items
+    where workflow_id=$1 and event_at>=$2 and event_at<=$3 and decision=any($4::text[]) and jsonb_typeof(reactions)='object'
+    and (kind<>'comment' or (watch_active and event_at>=$3::timestamptz-interval '7 days'))`,[workflow,start,end,includeReview?['accepted','review']:['accepted']]),
  ]);
  const eligible=rawRows.filter(i=>commentEligible(i,now));
  const all=rawRows.filter(i=>time(i.event_at)>=start.getTime());
- const items=all.filter(i=>visible(i,review)&&commentEligible(i,now));
- const historical=eligible.filter(i=>visible(i,review));
+ const items=all.filter(i=>visible(i,includeReview)&&commentEligible(i,now));
+ const historical=eligible.filter(i=>visible(i,includeReview));
  const current=historical.filter(i=>time(i.event_at)>=now-24*HOUR);
- const aggregate=rollups.filter(i=>visible(i,review));
+ const aggregate=rollups.filter(i=>visible(i,includeReview));
  const rx=window==='30d'?{
   negative:sum(aggregate.map(r=>Number(r.reaction_negative))),ironic:sum(aggregate.map(r=>Number(r.reaction_ironic))),
   sad:sum(aggregate.map(r=>Number(r.reaction_sad))),positive:sum(aggregate.map(r=>Number(r.reaction_positive))),
   observed_items:sum(aggregate.map(r=>r.reactions_measured)),total:0,negative_share:null as number|null,
  }:reactions(items);
- rx.total=rx.negative+rx.ironic+rx.sad+rx.positive;rx.negative_share=rx.total?(rx.negative+rx.ironic)/rx.total:null;
- const count=(decision:string)=>window==='30d'?sum(rollups.filter(i=>i.decision===decision).map(i=>i.count)):all.filter(i=>i.decision===decision).length;
+ rx.total=rx.negative+rx.ironic+rx.sad+rx.positive;rx.negative_share=rx.total?rx.negative/rx.total:null;
+ const count=(decision:string)=>sum(stats.filter(i=>i.decision===decision).map(i=>i.count));
  const mentions=window==='30d'?sum(aggregate.map(i=>i.count)):items.length;
  const byTopic=new Map<string,number>(),bySource=new Map<string,{id:string;title:string;kind:string;count:number;href:string}>();
  for(const i of window==='30d'?aggregate:items){
@@ -113,12 +126,12 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
  // Baselines use only material visible to this role. A viewer cannot infer rejected material through a denominator.
  const baselineRows=window==='30d'?[]:await query(`select source_id,views from (
   select source_id,views,row_number() over(partition by source_id order by event_at desc,raw_item_id desc) rank
-  from core.dashboard_items where workflow_id=$1 and kind='post' and event_at<$2
-  and decision=any($3::text[]) and views is not null) b where rank<=30`,[workflow,end,review?['accepted','review']:['accepted']]);
+  from core.curated_visible_items where workflow_id=$1 and kind='post' and event_at<$2
+  and decision=any($3::text[]) and views is not null) b where rank<=30`,[workflow,end,includeReview?['accepted','review']:['accepted']]);
  const baselines=new Map<string,number[]>();
  for(const b of baselineRows){const key=String(b.source_id);const v=baselines.get(key)||[];v.push(Number(b.views));baselines.set(key,v);}
  const anomalies:DashboardResponse['reach_anomalies']=[];
- for(const i of items){const base=median(baselines.get(String(i.source_id))||[]);if(i.kind==='post'&&i.views!==null&&base&&Number(i.views)/base>=3)anomalies.push({id:String(i.id),views:Number(i.views),baseline:base,ratio:Number(i.views)/base,href:href({ids:String(i.id)})});}
+ for(const i of items){const sample=baselines.get(String(i.source_id))||[];const base=sample.length>=10?median(sample):null;if(i.kind==='post'&&(i.negative||i.outage)&&i.views!==null&&base&&Number(i.views)/base>=3)anomalies.push({id:String(i.id),views:Number(i.views),baseline:base,ratio:Number(i.views)/base,href:href({ids:String(i.id)})});}
  const anomalyIds=new Set(anomalies.map(i=>i.id));
  const spread=spreadGroups(items,href);
  const signals:DashboardSignal[]=[];
@@ -135,7 +148,7 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
    sources:new Set(group.map(i=>String(i.source_id))).size,spread:spread.filter(s=>group.some(i=>String(i.id)===s.id)).reduce((n,s)=>n+s.count,0),
    action:actions.every(a=>a==='resolved')?'resolved':actions.includes('responding')?'responding':actions.includes('investigating')?'investigating':'none',
    href:groupHref,evidence:group.slice(-3).map(i=>({id:String(i.id),url:i.url,quote:i.quote.slice(0,280),published_at:i.published_at?iso(i.published_at):null})),
-   reason:high?(outageSources.size>=3?'Ознаки збою у ≥3 джерелах за 2 години.':'Перегляди ≥3× медіани джерела.'):negativeSources.size>=2?'Ознаки негативу у ≥2 джерелах.':'Поодинокий тематичний сигнал; потрібна перевірка.'});
+   reason:high?(outageSources.size>=3?'Ознаки збою у ≥3 джерелах за 2 години.':'Негативний тематичний матеріал: перегляди ≥3× медіани джерела.'):negativeSources.size>=2?'Ознаки негативу у ≥2 джерелах.':'Поодинокий тематичний сигнал; потрібна перевірка.'});
  }
  signals.sort((a,b)=>({h:0,m:1,l:2}[a.level]-{h:0,m:1,l:2}[b.level])||b.count-a.count);
  const activeBrand=signals.filter(s=>s.brand==='vodafone'&&s.action!=='resolved');
@@ -148,9 +161,8 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
  const delta=todayShare!==null&&dailyShares.length?(todayShare-sum(dailyShares)/dailyShares.length)*100:null;
  const brandLevel=window==='30d'||!brandToday.length?'unknown':activeBrand.some(s=>s.level==='h')?'critical':activeBrand.some(s=>s.level==='m')||(delta!==null&&delta>=10)?'attention':'calm';
  const measured=window==='30d'?aggregate.flatMap(i=>i.lag_samples.map(Number)):items.filter(i=>i.lag_seconds!==null).map(i=>Number(i.lag_seconds));
- const lags=window==='30d'?rollups:all;
- const lagServices=[...new Set(lags.map(i=>i.source_kind))].map(service=>{const rows=lags.filter(i=>i.source_kind===service);const samples=window==='30d'?rows.flatMap(i=>i.lag_samples.map(Number)):rows.filter(i=>i.lag_seconds!==null).map(i=>Number(i.lag_seconds));return {service,median_seconds:median(samples),measured:samples.length,href:review?inboxHref({source_kind:service,lag:'1'}):href({source_kind:service,lag:'1'})};});
- const lagSamples=review?(window==='30d'?rollups.flatMap(i=>i.lag_samples.map(Number)):all.filter(i=>i.lag_seconds!==null).map(i=>Number(i.lag_seconds))):measured;
+ const lagServices=[...new Set(stats.map(i=>i.source_kind))].map(service=>{const samples=stats.filter(i=>i.source_kind===service).flatMap(i=>i.lag_samples.map(Number));return {service,median_seconds:median(samples),measured:samples.length,href:review?inboxHref({source_kind:service,lag:'1'}):href({source_kind:service,lag:'1'})};});
+ const lagSamples=stats.flatMap(i=>i.lag_samples.map(Number));
  const negative=items.filter(i=>i.negative&&i.decision==='accepted');
  const reachMeasured=window==='30d'?sum(aggregate.map(i=>i.views_measured)):negative.filter(i=>i.views!==null).length;
  const negativeReach=window==='30d'?sum(aggregate.map(i=>Number(i.negative_reach))):sum(negative.filter(i=>i.views!==null).map(i=>Number(i.views)));
@@ -159,23 +171,23 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
   (array_agg(views order by observed_at desc,id desc))[1] last_views,(array_agg(views order by observed_at,id))[1] first_views,
   extract(epoch from max(observed_at)-min(observed_at)) seconds
   from core.telegram_metrics where item_id=any($1::bigint[]) and views is not null
-  and observed_at>=(select published_at from core.dashboard_items d where d.raw_item_id=core.telegram_metrics.item_id)
-  and observed_at<=(select published_at+interval '2 hours' from core.dashboard_items d where d.raw_item_id=core.telegram_metrics.item_id)
+  and observed_at>=(select published_at from core.curated_visible_items d where d.raw_item_id=core.telegram_metrics.item_id)
+  and observed_at<=(select published_at+interval '2 hours' from core.curated_visible_items d where d.raw_item_id=core.telegram_metrics.item_id)
   group by item_id having count(*)>=2 and max(observed_at)>min(observed_at)`,[items.map(i=>i.raw_item_id)]);
  const growth=growthRows.filter(r=>Number(r.last_views)>=Number(r.first_views)).map(r=>{const i=items.find(i=>String(i.raw_item_id)===String(r.item_id))!;return {id:String(i.id),views_per_hour:(Number(r.last_views)-Number(r.first_views))/Number(r.seconds)*3600,observations:r.observations,href:href({ids:String(i.id)})};}).sort((a,b)=>b.views_per_hour-a.views_per_hour).slice(0,10);
  const countSeries=hourly.map(b=>b.count);
  const reactionShares=window==='30d'?[]:hourly.map(b=>reactions(items.filter(i=>Math.floor(time(i.event_at)/HOUR)===Math.floor(time(b.at)/HOUR))).negative_share);
  const reactionSeries=reactionShares.some(n=>n===null)?[]:reactionShares.map(n=>n!*100);
  const counts:DashboardResponse['counts']={accepted:count('accepted')};
- if(review)Object.assign(counts,{review:count('review'),collected:window==='30d'?sum(rollups.map(i=>i.count)):all.length,rejected:count('rejected'),pending:count('pending')});
+ if(review)Object.assign(counts,{review:count('review'),collected:sum(stats.map(i=>i.count)),rejected:count('rejected'),pending:count('pending')});
  const criticalIds=current.filter(i=>signals.some(s=>s.level==='h'&&s.topic===i.topic&&s.brand===i.brand)&&(i.negative||anomalyIds.has(String(i.id)))).map(i=>String(i.id));
  const result:DashboardResponse={
-  version:1,aggregate_updated_at:window==='30d'&&rollups.length?iso(new Date(Math.min(...rollups.map(r=>time(r.generated_at))))):null,workflow_id:workflow,window,start:iso(start),end:iso(end),timezone:'Europe/Kyiv',generated_at:iso(end),aggregated:window==='30d',visibility:review?'accepted_review':'accepted',
+  version:1,aggregate_updated_at:window==='30d'&&rollups.length?iso(new Date(Math.min(...rollups.map(r=>time(r.generated_at))))):null,workflow_id:workflow,window,start:iso(start),end:iso(end),timezone:'Europe/Kyiv',generated_at:iso(end),aggregated:window==='30d',visibility:includeReview?'accepted_review':'accepted',
   brand_status:{level:brandLevel,title:{calm:'Спокійно',attention:'Увага',critical:'Критично',unknown:'Недостатньо даних'}[brandLevel],reason:brandLevel==='unknown'?(window==='30d'?'Статус зараз доступний у вікні 24 годин.':'За 24 години немає видимих згадок Vodafone.'):(activeBrand[0]?.title||'Правила не виявили високого сигналу.'),negative_delta_pp:delta,href:href({brand:'vodafone',from:iso(new Date(now-24*HOUR))})},
-  metrics:{mentions:metric(mentions,'матеріалів',href(),countSeries,mentions,'Прийняті та на перевірці; viewer бачить тільки прийняті.'),
+  metrics:{mentions:metric(mentions,'матеріалів',href(),countSeries,mentions,semantic?'Тільки актуальні тематичні результати AI або прийняті людиною. На перевірці — окремо.':'Прийняті та на перевірці; viewer бачить тільки прийняті.'),
    critical:metric(window==='30d'?null:criticalIds.length,'матеріалів',href({ids:criticalIds.join(',')||'0',from:iso(new Date(now-24*HOUR))}),[],criticalIds.length,'Високий сигнал за останні 24 години; поріг правил, не ймовірність кризи.'),
-   negative_share:metric(rx.negative_share===null?null:rx.negative_share*100,'percent',href({has_reactions:'1'}),reactionSeries,rx.observed_items,'(Негативні + іронічні) / усі реакції. Сумні окремо.'),
-   negative_reach:metric(reachMeasured?negativeReach:null,'переглядів',href({negative:'1',decision:'accepted',has_views:'1'}),[],reachMeasured,'Сума переглядів прийнятих матеріалів з ознаками негативу; верхня межа, не люди.'),
+   negative_share:metric(rx.negative_share===null?null:rx.negative_share*100,'percent',href({has_reactions:'1'}),reactionSeries,rx.observed_items,'👎 😡 🤬 🤮 💩 🤡 / усі реакції. Іронія та сум окремо. Реакція на новину не доводить ставлення до оператора.'),
+   negative_reach:metric(reachMeasured?negativeReach:null,'переглядів',href({negative:'1',decision:'accepted',has_views:'1'}),[],reachMeasured,'Сума переглядів прийнятих матеріалів з негативними аспектами; не унікальні люди й не виміряне охоплення.'),
    collection_lag:metric(median(lagSamples),'seconds',review?inboxHref({lag:'1'}):href({lag:'1'}),[],lagSamples.length,'Медіана fetched_at − published_at. Історичне добирання теж входить; це не live SLA.')},counts,hourly,
   topics:[...byTopic].map(([topic,count])=>({topic,count,href:href({topic})})).sort((a,b)=>b.count-a.count),sources:[...bySource.values()].sort((a,b)=>b.count-a.count).slice(0,10),
   reactions:{...rx,href:href({has_reactions:'1'}),note:'Евристика емоцій, не оцінка всіх абонентів. Невідомі й custom emoji входять до решти реакцій.'},
@@ -183,17 +195,26 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
   complaints:{count:complaints,per_hour:complaints/Math.min(hours,168),href:href({negative:'1',kind:'comment'}),note:'Негативні тематичні коментарі під постами на спостереженні, не доведені скарги; максимум 7 днів.'},lag_by_service:lagServices,
   freshness:freshnessRows.map(r=>({...r,last_success_at:r.last_success_at?iso(r.last_success_at):null,heartbeat_at:r.heartbeat_at?iso(r.heartbeat_at):null})),
   competitors:['kyivstar','lifecell'].map(brand=>{const rows=(window==='30d'?aggregate:items).filter(i=>i.brand===brand);return {brand,count:window==='30d'?sum(rows.map(i=>i.count)):rows.length,negative:window==='30d'?sum(rows.map(i=>i.negative_count)):rows.filter(i=>i.negative).length,href:href({brand})};}),
-  ai:{status:'rules',label:'Результат правил · AI очікує ключ',summary:`За вікно — ${mentions} тематичних матеріалів. ${window==='30d'?'Місячні дані агреговані.':`Високий сигнал: ${criticalIds.length} матеріалів за 24 години.`}`,href:href()},
+  ai:{status:semantic?'semantic':'rules',label:semantic?'Семантичний відбір · разовий Gemini-прогін':'Результат правил',summary:`За вікно — ${mentions} тематичних матеріалів. ${window==='30d'?'Місячні дані агреговані.':`Високий сигнал: ${criticalIds.length} матеріалів за 24 години.`}`,href:href()},
   methodology:['Часове вікно: останні 24 години / 7 днів; 30 календарних днів за місцевим часом України включно із сьогодні. Невідома дата публікації → час збору для включення до вікна, але не для затримки.',
-   'Негатив тексту визначено словниковими правилами; точність не виміряна. Сигнал не доводить реальний збій.',
-   'Високий сигнал: ≥3× медіани останніх 30 видимих постів джерела або ознаки збою у ≥3 джерелах за 2 години. Середній: негатив у ≥2 джерелах. Пороги — припущення.',
+   semantic?'Тематичність і тональність — актуальна Gemini-розмітка зі знімка, з перевіркою версії тексту та контексту. Нові, застарілі й сумнівні результати не входять до основних метрик. Рішення людини має пріоритет для тієї самої версії. Точність не виміряна.':'Негатив тексту визначено словниковими правилами; точність не виміряна. Сигнал не доводить реальний збій.',
+   'Високий сигнал: негативний матеріал із ≥3× медіани останніх 30 видимих постів джерела (щонайменше 10 виміряних постів) або ознаки збою у ≥3 джерелах за 2 години. Середній: негатив у ≥2 джерелах. Пороги — припущення; кілька джерел можуть передруковувати одну новину, це не незалежні підтвердження.',
    'Статус Vodafone враховує відкриті сигнали за 24 години; відхилення реакцій від середнього попередніх доступних днів (до 6) ≥10 п.п. підвищує стан до «Увага». Це евристика.',
    'Поширення: однаковий текст від 100 символів або canonical ID за 48 годин. Перепублікація не є незалежним підтвердженням. Третя перепублікація — четвертий матеріал із відомою датою.',
    'Темп поширення: кількість датованих матеріалів у перші 6 годин / 6. Для молодших кластерів вікно ще неповне. Набір переглядів: два чи більше спостережень у перші 2 години; зменшення не рахується приростом.',
-   'Коментарі входять до метрик тільки у межах 7 днів і під постами на спостереженні. Місячні згортки оновлює processor раз на хвилину; вони не містять текстів.',
+   'Коментарі входять до метрик тільки у межах 7 днів і під постами на спостереженні. Місячні показники обчислюються з актуальних рішень на момент запиту; вони не містять текстів.',
    ...(window==='30d'?['У місячному режимі доступні агрегати. Поточні сигнали, швидкості окремих матеріалів і аномалії охоплення відкрийте у вікні 24 години або 7 днів.']:[])],
  };
- if(review)result.metrics.noise=metric(count('rejected'),'матеріалів',inboxHref({state:'rejected'}),[],count('rejected'),'Відсіяно чинними правилами або рішенням людини; це не доведена точність фільтра.');
+ const reactionNote='Пороги уваги: 25% / 50% / 75% негативних emoji, лише за ≥20 реакцій на ≥3 матеріалах. Це налаштування демо, не перевірені пороги кризи.';
+ Object.assign(result.metrics.negative_share,{attention:reactionAttention(rx.negative_share,rx.total,rx.observed_items),attention_note:reactionNote});
+ Object.assign(result.metrics.critical,{attention:criticalAttention(result.metrics.critical.value),attention_note:'1–2 / 3–4 / ≥5 матеріалів високого сигналу посилюють червоний акцент. Пороги уваги для демо, не ймовірність кризи.'});
+ result.vodafone_7d={count:brandWeek[0].count,href:href({brand:'vodafone',decision:'accepted',window:'7d',from:iso(new Date(now-7*24*HOUR))})};
+ result.analysis_coverage={cutoff_at:completedRuns[0]?iso(completedRuns[0].cutoff_at):null,...(review?{pending:count('pending')}:{}),note:semantic?'AI обробив знімок. Нові записи й змінений контекст очікують окремого прогону; безперервний AI-аналіз ще не підключений.':'Працює попередній відбір правилами.'};
+ result.reaction_freshness={oldest_at:rxTimes[0]?.oldest_at?iso(rxTimes[0].oldest_at):null,newest_at:rxTimes[0]?.newest_at?iso(rxTimes[0].newest_at):null,
+   active_seconds:Number(watchPolicy[0]?.active_seconds??300),cooling_seconds:Number(watchPolicy[0]?.cooling_seconds??3600),sleeping_seconds:Number(watchPolicy[0]?.sleeping_seconds??21600),
+   note:'Плановий інтервал залежить від стану поста. Черга, доступ до обговорень і FloodWait можуть його збільшити. В архіві та на паузі планові перевірки зупинені. Час кожного вимірювання — у «Контекст і доказ».'};
+ result.methodology.push(reactionNote,'Негативні emoji: 👎 😡 🤬 🤮 💩 🤡; іронічні: 🤣 😁 😈; сумні: 😢 💔 😭. Решта не вважаються позитивними автоматично. Це реакції на зміст допису, не оцінка оператора.');
+ if(review)result.metrics.noise=metric(count('rejected'),'матеріалів',href({decision:'rejected'}),[],count('rejected'),'Відсіяно чинним аналізом або рішенням людини; це не доведена точність фільтра.');
  return result;
 }
 export const dashboard=new Hono<AppEnv>().get('/',requireSession,async c=>c.json(await getDashboard(c.req.query(),hasPermission(c.get('user').role,{incident:['edit']}))));

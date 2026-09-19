@@ -99,7 +99,7 @@ def enrich(rows):
     return active,list(groups.values())
 
 
-def pack(rows,limit=250,byte_limit=100000):
+def legacy_pack(rows,limit=250,byte_limit=100000):
     batch=[];size=0
     for row in rows:
         estimate=len(json.dumps({'text':row['text'],'context':row['context']},ensure_ascii=False).encode())+100
@@ -107,6 +107,39 @@ def pack(rows,limit=250,byte_limit=100000):
             yield batch;batch=[];size=0
         batch.append(row);size+=estimate
     if batch:yield batch
+
+
+def pack(rows,limit=250,byte_limit=100000):
+    # Count each shared parent once, as in the actual screening payload.
+    batch=[];size=0;contexts=set()
+    for row in rows:
+        own=len(json.dumps({'id':row['id'],'kind':row['kind'],'text':row['text'],
+            'context_ids':[c['id'] for c in row['context']],
+            'missing_direct_parent':bool(row['missing_parent_key'])},ensure_ascii=False).encode())+10
+        extra=sum(len(json.dumps(c['text'],ensure_ascii=False).encode())+30
+                  for c in row['context'] if c['id'] not in contexts)
+        if batch and (len(batch)>=limit or size+own+extra>byte_limit):
+            yield batch;batch=[];size=0;contexts=set()
+            extra=sum(len(json.dumps(c['text'],ensure_ascii=False).encode())+30 for c in row['context'])
+        batch.append(row);size+=own+extra;contexts.update(c['id'] for c in row['context'])
+    if batch:yield batch
+
+
+def cache_key(stage,rows):
+    return hashlib.sha256((VERSION+stage+json.dumps(rows,ensure_ascii=False,default=str,sort_keys=True)).encode()).hexdigest()
+
+
+def screening_plan(state,rows):
+    path=state/'screen-plan.json';lookup={r['id']:r for r in rows}
+    if path.exists():plan=json.loads(path.read_text())
+    else:
+        cached=[batch for batch in legacy_pack(rows) if (state/('screen-'+cache_key('screen',batch)+'.json')).exists()]
+        done={r['id'] for batch in cached for r in batch}
+        plan=[[r['id'] for r in batch] for batch in cached+list(pack([r for r in rows if r['id'] not in done]))]
+        write_json(path,plan)
+    ids=[id for batch in plan for id in batch]
+    if len(ids)!=len(set(ids)) or set(ids)!=set(lookup):raise ValueError('screen_plan_coverage')
+    return [[lookup[id] for id in batch] for batch in plan]
 
 
 def screen_payload(rows,key):
@@ -145,7 +178,7 @@ def validate_details(output,rows):
 
 
 def infer_cached(state,stage,rows,prompt,schema,validator):
-    key=hashlib.sha256((VERSION+stage+json.dumps(rows,ensure_ascii=False,default=str,sort_keys=True)).encode()).hexdigest()
+    key=cache_key(stage,rows)
     path=state/(stage+'-'+key+'.json')
     if path.exists():return validator(json.loads(path.read_text()),rows,key)
     engine=Agy()
@@ -190,9 +223,22 @@ def progress(run_id,phase,screened,total,detailed,candidates):
 
 def make_brief(state,run_id,rows):
     with connect() as conn:
-        labels=conn.execute('select raw_item_id,label from core.analysis_labels where run_id=%s',(run_id,)).fetchall()
+        labels=conn.execute('''select l.raw_item_id,l.label from core.analysis_labels l
+            join core.analysis_runs ar on ar.id=l.run_id
+            join core.incoming_items i on i.id=l.raw_item_id and i.workflow_id=ar.workflow_id
+            where l.run_id=%s and not i.deleted and i.version=l.raw_version
+            and not exists(
+                select 1 from jsonb_array_elements(l.label->'context_versions') cv
+                left join core.incoming_items p on p.id=(cv->>'id')::bigint and p.workflow_id=ar.workflow_id
+                where p.id is null or p.deleted or p.version<>(cv->>'version')::int
+            ) and (l.label->>'missing_parent_key' is null or not exists(
+                select 1 from core.incoming_items p where p.source_id=i.source_id
+                and p.source_item_id=l.label->>'missing_parent_key' and not p.deleted
+            ))''',(run_id,)).fetchall()
+        scope=conn.execute('select scope from core.analysis_runs where id=%s',(run_id,)).fetchone()['scope']
     source={r['id']:r for r in rows}
-    accepted=[r for r in labels if r['label']['decision']=='relevant']
+    tests=set(scope.get('test_source_ids',[]))
+    accepted=[r for r in labels if r['label']['decision']=='relevant' and source[r['raw_item_id']]['source_id'] not in tests]
     counts=Counter();sentiments=Counter();seen=set();examples=[]
     # Mix Vodafone first with comments and other relevant records; bounded input.
     accepted.sort(key=lambda r:(r['label']['relevance']!='vodafone',source[r['raw_item_id']]['kind']=='post',r['raw_item_id']))
@@ -206,9 +252,13 @@ def make_brief(state,run_id,rows):
                 'evidence':label['evidence'],'aspects':label.get('aspects',[])})
     while len(json.dumps(examples,ensure_ascii=False).encode())>85000:examples.pop()
     payload={'counts':dict(counts),'comment_sentiments':dict(sentiments),'examples':examples,
-             'analyzed':len(rows),'missing_direct_context':sum(bool(r['missing_parent_key']) for r in rows)}
+             'analyzed':len(rows),'current_results':len(labels),
+             'missing_direct_context':sum(bool(r['missing_parent_key']) for r in rows)}
     expected={r['id'] for r in examples}
-    path=state/'brief.json'
+    # New/changed context may exclude former evidence on a resumed run. Reuse
+    # a brief only for the exact current input, not merely for the same run ID.
+    brief_key=hashlib.sha256(('brief-current-v1'+json.dumps(payload,ensure_ascii=False,sort_keys=True)).encode()).hexdigest()
+    path=state/('brief-current-'+brief_key+'.json')
     def verify(value):
         check_schema(value,BRIEF_SCHEMA)
         for item in value['findings']+value['actions']:
@@ -240,6 +290,8 @@ INPUT_JSON:\n'''+json.dumps(payload,ensure_ascii=False)
             write_json(path,brief)
         finally:engine.close()
     with connect() as conn:
+        brief['coverage']={'examples':len(examples),'relevant_records':len(accepted),
+            'selection':'До 80 різних текстів із контекстом; спочатку Vodafone та коментарі. Статистика охоплює весь зріз.'}
         conn.execute('''insert into core.analysis_briefs(run_id,model,brief) values(%s,%s,%s)
             on conflict(run_id) do update set brief=excluded.brief,generated_at=now()''',(run_id,MODEL,Jsonb(brief)))
 
@@ -255,6 +307,7 @@ def run(args):
             (run_id,snapshot['workflow'],snapshot['cutoff'],MODEL,VERSION,Jsonb({'source_kind':'telegram',
              'authorization':snapshot['authorization'],'source_ids':sorted({r['source_id'] for r in rows}),
              'kinds':dict(Counter(r['kind'] for r in rows)),'semantic_groups':len(groups),
+             'test_source_ids':snapshot.get('test_source_ids',[]),
              'missing_direct_context':sum(bool(r['missing_parent_key']) for r in rows),
              'deleted_excluded':len(snapshot['rows'])-len(rows)}),len(rows),
              'Увесь невидалений Telegram-вхід у зафіксованому зрізі, включно з відсіяним правилами. '
@@ -265,7 +318,7 @@ def run(args):
         progress(run_id,'screening',0,len(rows),0,0)
         with ThreadPoolExecutor(max_workers=args.workers) as pool:
             futures={pool.submit(infer_cached,state,'screen',batch,SCREEN_PROMPT,SCREEN_SCHEMA,validate_screen):batch
-                     for batch in pack(representatives)}
+                     for batch in screening_plan(state,representatives)}
             for future in as_completed(futures):
                 batch=futures[future];answer=future.result()
                 selected=set(answer['candidate_ids'])|set(answer['uncertain_ids']);candidate_ids.update(selected)
@@ -285,7 +338,7 @@ def run(args):
         progress(run_id,'details',screened,len(rows),0,candidate_total)
         with ThreadPoolExecutor(max_workers=args.workers) as pool:
             futures={pool.submit(infer_cached,state,'detail',batch,DETAIL_PROMPT,DETAIL_SCHEMA,
-                     lambda value,rows,key:validate_details(value,rows)):batch for batch in pack(candidates,limit=12,byte_limit=65000)}
+                     lambda value,rows,key:validate_details(value,rows)):batch for batch in legacy_pack(candidates,limit=12,byte_limit=65000)}
             for future in as_completed(futures):
                 answer=future.result()
                 with connect() as conn:
