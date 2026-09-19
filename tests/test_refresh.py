@@ -115,3 +115,25 @@ def test_telegram_refresh_preserves_blocked_watch_deadline(prepared):
         assert db.one('select next_check_at<=now() due from raw.watch_state where item_id=%s',(active,))['due']
         assert db.one('select status from core.refresh_requests order by id desc limit 1')['status']=='running'
     finally:collector.pool.close()
+
+
+def test_refresh_missing_collector_is_visible_without_false_completion(prepared):
+    db,admin,cfg,source,_=prepared
+    request=db.one("""insert into core.refresh_requests(workflow_id,service,requested_by,requested_at)
+        values(1,'telegram','synthetic',now()-interval '6 minutes') returning id""")
+    db.execute("delete from raw.service_status where name='collector-telegram'")
+    response=admin.get('/api/admin/refresh?workflow_id=1')
+    assert response.status_code==200
+    row=next(r for r in response.json()['requests'] if r['id']==str(request['id']))
+    assert row['stale'] is True and row['collector_online'] is False
+    assert row['status']=='pending' and row['completed_at'] is None
+    assert 'не підтверджено' in row['detail']
+    assert db.one('select status from core.refresh_requests where id=%s',(request['id'],))['status']=='pending'
+    db.execute("insert into raw.service_status(name,detail) values('collector-telegram','Synthetic heartbeat only')")
+    row=admin.get('/api/admin/refresh?workflow_id=1').json()['requests'][0]
+    assert row['collector_online'] is True and row['stale'] is True
+    assert 'ще очікує' in row['detail']
+    # The repeat click still refers to that durable request and returns its true liveness.
+    rows=admin.post('/api/admin/refresh',json={'workflow_id':1}).json()['requests']
+    row=next(r for r in rows if r['service']=='telegram')
+    assert row['id']==str(request['id']) and row['stale'] is True

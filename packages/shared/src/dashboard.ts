@@ -29,6 +29,7 @@ export type RefreshRequest = {
  id:string;workflow_id:string;service:'telegram'|'rss';
  status:'pending'|'running'|'completed'|'deferred'|'disabled'|'failed';
  requested_at:string;started_at:string|null;completed_at:string|null;detail:string;
+ stale?:boolean;collector_online?:boolean;collector_heartbeat_at?:string|null;
 };
 
 export type DashboardSummary = {
