@@ -24,3 +24,9 @@ export type DashboardResponse = {
  ai:{status:'waiting_key'|'rules';label:string;summary:string;href:string};
  methodology:string[];
 };
+
+export type RefreshRequest = {
+ id:string;workflow_id:string;service:'telegram'|'rss';
+ status:'pending'|'running'|'completed'|'deferred'|'disabled'|'failed';
+ requested_at:string;started_at:string|null;completed_at:string|null;detail:string;
+};
