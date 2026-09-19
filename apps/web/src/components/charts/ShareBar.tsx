@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router";
 
-type Part = { label: string; value: number; kind: "negative" | "sad" | "positive" };
-export function ShareBar({ negative, sad, positive, href }: { negative: number; sad: number; positive: number; href: string }) {
+type Part = { label: string; value: number; kind: "negative" | "ironic" | "sad" | "positive" };
+export function ShareBar({ negative, ironic=0, sad, positive, href }: { negative: number; ironic?:number; sad: number; positive: number; href: string }) {
   const [active, setActive] = useState<string | null>(null);
-  const parts: Part[] = [{ label: "Негатив та іронія", value: negative, kind: "negative" }, { label: "Сумні", value: sad, kind: "sad" }, { label: "Інші реакції", value: positive, kind: "positive" }];
-  const total = negative + sad + positive;
+  const parts: Part[] = [{ label: "Негативні emoji", value: negative, kind: "negative" }, {label:"Іронічні",value:ironic,kind:"ironic"}, { label: "Сумні", value: sad, kind: "sad" }, { label: "Інші реакції", value: positive, kind: "positive" }];
+  const total = negative + ironic + sad + positive;
   let offset = 0;
   return <div className="reaction-chart">
     {total > 0 ? <svg className="reaction-svg" viewBox="0 0 600 32" role="group" aria-label="Розподіл агрегованих реакцій">

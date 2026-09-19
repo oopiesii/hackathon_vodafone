@@ -48,7 +48,7 @@ def test_dashboard_metrics_roles_and_drilldown(prepared):
         assert a['metrics']['noise']['value']==1
         assert a['reactions']['total']==30
         assert a['reactions']['negative']==3 and a['reactions']['ironic']==3 and a['reactions']['sad']==8
-        assert a['metrics']['negative_share']['value']==20
+        assert a['metrics']['negative_share']['value']==10  # Irony is displayed separately.
         assert a['metrics']['negative_reach']['value']==120
         assert 1790<a['metrics']['collection_lag']['value']<1810
         assert analyst.get('/api/dashboard').json()['metrics']['mentions']['value']==4

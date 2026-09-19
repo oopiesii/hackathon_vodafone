@@ -23,7 +23,7 @@ export async function dashboardSummary(workflow:string,window:DashboardWindow,re
     order by generated_at desc,id desc limit 5
    ) a ${window==='30d'?'':`left join lateral (
     select coalesce(jsonb_agg(jsonb_build_object('id',d.id::text,'raw_item_id',d.raw_item_id::text,'url',d.url,'text',d.quote)),'[]') evidence
-    from core.dashboard_items d where d.workflow_id=a.workflow_id and d.raw_item_id=any(a.evidence_ids)
+    from core.curated_items d where d.workflow_id=a.workflow_id and d.raw_item_id=any(a.evidence_ids)
       and d.decision=any($3::text[])
    ) e on true`} order by a.generated_at desc,a.id desc`,window==='30d'?[workflow,window]:[workflow,window,review?['accepted','review']:['accepted']]):Promise.resolve([]),
  ]);
@@ -31,7 +31,7 @@ export async function dashboardSummary(workflow:string,window:DashboardWindow,re
  const fresh=Boolean(state&&Date.now()-new Date(state.heartbeat_at).getTime()>=-60000&&Date.now()-new Date(state.heartbeat_at).getTime()<300000);
  const status:DashboardSummary['status']=!fresh?'unavailable':state.mode==='waiting_key'?'waiting_key':state.mode==='rate_limited'?'rate_limited':state.mode==='error'?'error':'pending';
  const labels:Record<string,string>={unavailable:'Стан AI-сервісу не підтверджено',waiting_key:'AI очікує ключ',rate_limited:'AI очікує ліміт',error:'AI потребує перевірки',pending:'AI готує зведення'};
- const result:DashboardSummary={...fallback,status,label:labels[status]!,mode:'rules',generated_at:null,model:null,observations:[],limitations:['Показано правила для доступних матеріалів.']};
+ const result:DashboardSummary={...fallback,status,label:labels[status]!,mode:'rules',generated_at:null,model:null,observations:[],limitations:['Показано агрегати доступних матеріалів.']};
  for(const row of rows){
   const parsed=bodySchema.safeParse(row.body);
   if(!parsed.success)continue;
@@ -59,6 +59,6 @@ export async function dashboardSummary(workflow:string,window:DashboardWindow,re
    limitations:body.limitations,coverage:{scope:'allowed_sources',evidence_sample:body.provenance.evidence_sample,
     note:'Знімок тільки джерел із чинним дозволом на AI; покриття може відрізнятися від загальних метрик.'}};
  }
- if(review===false&&status==='pending')return {...result,status:'rules',label:'Зведення правил · лише прийняті матеріали'};
+ if(review===false&&status==='pending')return {...result,status:'rules',label:'Зведення · лише прийняті матеріали'};
  return result;
 }

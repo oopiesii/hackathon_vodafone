@@ -43,17 +43,19 @@ export function Dashboard({ me }: { me: Me | undefined }) {
       {data.aggregation && !data.aggregation.complete && <Alert>{data.aggregation.note}</Alert>}
       <div className="dashboard-overview">
         <Link className={`brand-status brand-status-${data.brand_status.level}`} to={data.brand_status.href} title={data.brand_status.reason}>
-          <span className="brand-status-label">Vodafone Україна <span>За правилами</span></span>
+          <span className="brand-status-label">Vodafone Україна <span>Евристика сигналів</span></span>
           {data.brand_status.level === "calm" ? <ShieldCheck size={28} aria-hidden="true" /> : <ShieldAlert size={28} aria-hidden="true" />}
           <strong className="brand-status-title">{{ calm: "Спокійно", attention: "Увага", critical: "Критично", unknown: "Недостатньо даних" }[data.brand_status.level]}</strong>
           <span className="brand-status-problem">{data.brand_status.reason}</span><span className="brand-status-link">Перевірити докази<ArrowUpRight size={16} aria-hidden="true" /></span>
         </Link>
         <Metrics data={data} />
       </div>
+      {data.vodafone_7d && <div className="dashboard-coverage"><Link className="btn btn-outline" to={data.vodafone_7d.href}>Vodafone: згадки за 7 днів — {count(data.vodafone_7d.count)}<ArrowUpRight size={16} aria-hidden="true" /></Link><span>Відсутність згадок за 24 години не означає відсутності даних за тиждень.</span></div>}
+      {data.analysis_coverage && <div className="dashboard-coverage"><strong>{data.analysis_coverage.label || "Семантичний відбір"}{data.analysis_coverage.cutoff_at ? ` · зріз ${time(data.analysis_coverage.cutoff_at)}` : ""}</strong><span>{data.analysis_coverage.note}</span>{data.analysis_coverage.pending !== undefined && <Link to={`/inbox?workflow_id=${workflow}`}>Очікує семантичної перевірки: {count(data.analysis_coverage.pending)} · відкрити увесь вхід</Link>}</div>}
       <div className="dashboard-grid">
         <Card className="dashboard-now span-7" title="Що зараз" actions={<Badge>Останні 24 год</Badge>} footer={<Link className="btn btn-ghost btn-sm" to={`/feed?workflow_id=${workflow}&decision=${data.visibility === "accepted" ? "accepted" : "visible"}`}>Відкрити стрічку<ArrowUpRight size={14} aria-hidden="true" /></Link>}><Signals data={data} /></Card>
         <Card className="span-5" title={data.aggregated ? "Динаміка за днями" : "Динаміка згадок"}>{calculating ? waiting : <HourlyBars data={data.hourly} daily={data.aggregated} />}</Card>
-        <Card className="span-4" title="Реакції" actions={<Badge title={data.reactions.note}>Евристика</Badge>} footer={<span className="note">{calculating ? "Очікуємо повного зрізу" : `${quantity(data.reactions.observed_items, "матеріал", "матеріали", "матеріалів")} із реакціями · сумні окремо`}</span>}>{calculating ? waiting : <ShareBar negative={data.reactions.negative + data.reactions.ironic} sad={data.reactions.sad} positive={data.reactions.positive} href={data.reactions.href} />}</Card>
+        <Card className="span-4" title="Реакції" actions={<Badge title={data.reactions.note}>Евристика</Badge>} footer={<span className="note">{calculating ? "Очікуємо повного зрізу" : `${quantity(data.reactions.observed_items, "матеріал", "матеріали", "матеріалів")} із реакціями · реакція на допис не дорівнює ставленню до оператора`}</span>}>{calculating ? waiting : <ShareBar negative={data.reactions.negative} ironic={data.reactions.ironic} sad={data.reactions.sad} positive={data.reactions.positive} href={data.reactions.href} />}{data.reaction_freshness && !calculating && <ReactionTiming data={data.reaction_freshness} />}</Card>
         <Card className="span-4" title="Джерела згадок">{calculating ? waiting : <BarList data={data.sources.slice(0, 5).map(s => ({ id: s.id, label: s.title, value: s.count, href: s.href }))} />}</Card>
         <Card className="span-4" title="Поширення" actions={<Badge title="Перепублікації не доводять незалежність джерел.">Збіги змісту</Badge>}>
           {calculating ? waiting : data.aggregated ? <div className="chart-no-data">Окремі поширення доступні у вікнах 24 год і 7 днів</div> : data.spread.length ? <div className="spread-list">{data.spread.slice(0, 3).map(s => <Link key={s.id} to={s.href}><strong>{quantity(s.count, "поширення", "поширення", "поширень")}</strong><span>{quantity(s.source_count, "джерело", "джерела", "джерел")}</span><small>{s.third_repost_seconds === null ? "Третю перепублікацію не зафіксовано" : `До 3-го поширення: ${count(s.third_repost_seconds / 60)} хв`}</small></Link>)}</div> : <div className="chart-no-data">Збігів змісту у вибраному вікні немає</div>}
@@ -63,7 +65,15 @@ export function Dashboard({ me }: { me: Me | undefined }) {
         <Card className="span-4" title="Конкуренти">{calculating ? waiting : <BarList data={data.competitors.map(c => ({ id: c.brand, label: c.brand === "kyivstar" ? "Київстар" : c.brand === "lifecell" ? "lifecell" : c.brand, value: c.count, href: c.href }))} />}</Card>
         <Summary summary={data.ai} />
       </div>
-      <details className="dashboard-methodology"><summary>Методика, покриття та обмеження</summary><ul>{data.methodology.map(line => <li key={line}>{line}</li>)}</ul><MetricsTable data={data} /><div className="dashboard-method-meta">Роль: {me?.user.role === "viewer" ? "лише прийняті матеріали" : "прийняті та на перевірці"}. Зріз: {time(data.start)} – {time(data.end)} (місцевий час).</div></details>
+      <details className="dashboard-methodology"><summary>Методика, покриття та обмеження</summary><ul>{data.methodology.map(line => <li key={line}>{line}</li>)}</ul><MetricsTable data={data} /><div className="dashboard-method-meta">Відбір: {data.visibility === "accepted" ? "лише прийняті матеріали" : "прийняті та на перевірці"}. Зріз: {time(data.start)} – {time(data.end)} (місцевий час).</div></details>
     </div>}
   </div>;
+}
+
+function ReactionTiming({ data }: { data: NonNullable<DashboardResponse["reaction_freshness"]> }) {
+  return <details className="reaction-method"><summary>Коли й звідки ці реакції</summary>
+    <p>Агреговані лічильники Telegram; імена людей не збираємо. {data.oldest_at || data.newest_at ? `Збережені вимірювання: ${time(data.oldest_at)} – ${time(data.newest_at)}.` : "Лічильники ще не отримано."}</p>
+    <p>План: активні пости — кожні {count(data.active_seconds / 60)} хв; після спаду — {count(data.cooling_seconds / 60)} хв; сплячі — {count(data.sleeping_seconds / 3600)} год.</p>
+    <p>{data.note}</p><p>Показники екрана оновлюються кожні 5 хвилин. Позачерговий збір доступний адміністратору; ліміти джерел зберігаються.</p>
+  </details>;
 }

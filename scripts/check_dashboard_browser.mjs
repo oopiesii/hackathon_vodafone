@@ -19,7 +19,7 @@ const server = createServer(async (req,res) => {
   if(path==='/api/auth/get-session') data={session:{id:'synthetic',userId:'test',expiresAt:'2099-01-01T00:00:00Z'},user};
   if(path==='/api/me') data={user,permissions:scenario==='viewer'?{incident:['view']}:{incident:['view','edit'],collector:['read','manage'],user:['list','create']}};
   if(path==='/api/admin/refresh') data={requests:['refresh','stale-refresh'].includes(scenario)?[{id:'1',workflow_id:'1',service:'telegram',status:'running',stale:scenario==='stale-refresh',collector_online:scenario!=='stale-refresh',requested_at:dashboard.end,started_at:dashboard.end,completed_at:null,detail:scenario==='stale-refresh'?'Немає свіжого сигналу збирача. Запит залишається в черзі; оновлення не підтверджено.':'Синтетична перевірка: збирач прийняв запит.'},{id:'2',workflow_id:'1',service:'rss',status:'deferred',requested_at:dashboard.end,started_at:dashboard.end,completed_at:dashboard.end,detail:'Очікування лімітів джерела збережено.'}]:[]};
-  if(path==='/api/admin/state') data={telegram_enabled:true,accounts:[{id:1,label:'Демо',credentials_ready:false,status:'waiting'}],channels:[],services:[],threads:[{id:1,channel_id:1,post_id:1,comment_cursor:0,status:'resolve',last_error:null,last_polled_at:null}],audit:[],memberships:[],shares:[{id:1,workflow_id:1,name:'Синтетичне прострочене посилання',scope:'posts',channel_ids:'[]',topics:'["network"]',expires_at:1,revoked:false}],workflows:[{id:1,name:'Синтетичний workflow',enabled:true,comments_enabled:true,filter_spam:true,poll_seconds:30,history_days:7}]};
+  if(path==='/api/admin/state') data={telegram_enabled:true,accounts:[{id:1,label:'Демо',credentials_ready:false,status:'waiting'}],channels:[{id:1,workflow_id:1,account_id:1,username:'synthetic_channel',enabled:true,permission_note:'Синтетична підстава перевірки UI',source_type:'channel',status:'watching',post_cursor:1,last_success_at:dashboard.end,last_polled_at:dashboard.end}],services:[],threads:[{id:1,channel_id:1,post_id:1,comment_cursor:0,status:'resolve',last_error:null,last_polled_at:null}],audit:[],memberships:[],shares:[{id:1,workflow_id:1,name:'Синтетичне прострочене посилання',scope:'posts',channel_ids:'[]',topics:'["network"]',expires_at:1,revoked:false}],workflows:[{id:1,name:'Синтетичний workflow',enabled:true,comments_enabled:true,filter_spam:true,poll_seconds:30,history_days:7}]};
   if(path==='/api/admin/rss') data={enabled:true,items:[],service:null,workflows:[{id:'1',name:'Демонстрація',enabled:true}]};
   if(path==='/api/admin/ai/status') data={heartbeat_at:scenario==='stale-ai'?'2020-01-01T00:00:00Z':new Date().toISOString(),mode:scenario==='stale-ai'?'active':'waiting_key',model:null,last_error:null,limit_per_hour:60,items_last_hour:0,sources:[{id:'1',kind:'telegram',title:'Синтетичний Telegram',llm_allowed:false,llm_basis:null,rights_status:null},{id:'2',kind:'rss',title:'Дозволений RSS',llm_allowed:true,llm_basis:'Синтетична підстава',rights_status:'allowed'},{id:'3',kind:'rss',title:'Заблокований RSS',llm_allowed:false,llm_basis:null,rights_status:'blocked'}]};
   if(path==='/api/workflows') data={items:[{id:'1',name:'Vodafone та український телеком'}]};
@@ -35,6 +35,14 @@ const server = createServer(async (req,res) => {
    if(scenario==='empty'){data.signals=[];data.sources=[];data.spread=[];data.competitors=[];data.counts={accepted:0,review:0,collected:85,rejected:85,pending:0};for(const m of Object.values(data.metrics)){m.value=m.unit==='матеріалів'?0:null;m.series=[];m.measured=0;}data.reactions={...data.reactions,negative:0,ironic:0,sad:0,positive:0,total:0,observed_items:0};data.hourly=data.hourly.map(h=>({...h,count:0,topics:{}}));data.ai.summary="За правилами: тематичних матеріалів немає; зібрано 85, відсіяно 85.";data.brand_status={...data.brand_status,level:'unknown',title:'Недостатньо тематичних матеріалів'};}
    if(scenario==='calculating'){data.aggregation={complete:false,generated_at:null,note:'Перераховуємо агрегати після оновлення матеріалів. Неповні лічильники приховано.'};data.aggregated=true;data.signals=[];for(const m of Object.values(data.metrics)){m.value=null;m.series=[];}data.brand_status.level='unknown';data.brand_status.reason='Очікуємо повного зрізу';data.ai.summary='Перерахунок агрегатів триває.';}
    if(scenario==='ai'){data.ai={...data.ai,status:'ready',mode:'ai',label:'AI · синтетичний приклад',model:'test-model',generated_at:dashboard.end,summary:'Синтетичне зведення: матеріали повідомляють про перебої зв’язку. Це приклад для перевірки інтерфейсу.',observations:[{text:'У тестовому повідомленні згадано перебої мобільного інтернету. Причину не встановлено.',evidence:[{id:'1',raw_item_id:'1',quote:'Синтетичний приклад: перевірка матеріалу Vodafone.',url:'https://example.test/evidence',href:'/feed?workflow_id=1&ids=1'}]}],coverage:{scope:'allowed_sources',evidence_sample:1,note:'Лише один синтетичний доказ; повнота покриття не оцінюється.'},limitations:['Це синтетичний приклад, не реальне зведення.']};}
+   if(scenario==='curated'){
+    data.analysis_coverage={label:'Семантичний відбір · синтетична перевірка',cutoff_at:data.end,pending:22,note:'Нові та застарілі матеріали очікують семантичної перевірки.'};
+    data.vodafone_7d={count:2,href:'/feed?workflow_id=1&brand=vodafone&window=7d'};
+    data.reaction_freshness={oldest_at:data.start,newest_at:data.end,active_seconds:300,cooling_seconds:3600,sleeping_seconds:21600,note:'Черга й ліміти можуть збільшити інтервал.'};
+    data.reactions={...data.reactions,negative:390,positive:74,negative_share:78};
+    data.metrics.negative_share={...data.metrics.negative_share,value:78,attention:3,attention_note:'Синтетичний високий рівень уваги; поріг — припущення.'};
+    data.metrics.critical={...data.metrics.critical,value:2,attention:1,attention_note:'Синтетичний рівень уваги.'};
+   }
    if(scenario==='long'){data.brand_status.title='Надзвичайно довга назва питання для перевірки перенесення рядків та збереження всіх змістовних слів у вузькій картці';data.sources[0].title='Надзвичайнодовганазваджерелабезпробілів'.repeat(4);data.signals[0].title=data.brand_status.title;data.metrics.mentions.value=10000;data.metrics.negative_reach.value=1258901234;}
    if(scenario==='disabled') data.freshness.forEach(s=>s.enabled=false);
    if(scenario==='viewer'){data.visibility='accepted';delete data.metrics.noise;data.counts={accepted:96};}
@@ -49,7 +57,7 @@ await new Promise(r=>server.once('listening',r));
 const browser = await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
 const reports=[];
 const scenarios=process.env.UFV_SCENARIO?[process.env.UFV_SCENARIO]:process.argv.includes('--states')?['empty','error','loading','long','disabled','viewer','calculating','refresh']:['populated'];
-for(const scenario of scenarios) for(const width of [1440,768,390]) for(const theme of ['light','dark']){
+for(const scenario of scenarios) for(const width of (process.env.UFV_WIDTHS || '1440,768,390').split(',').map(Number)) for(const theme of (process.env.UFV_THEMES || 'light,dark').split(',')){
  const context=await browser.newContext({viewport:{width,height:900},colorScheme:theme,locale:'uk-UA',timezoneId:'Europe/Kyiv',extraHTTPHeaders:{'x-scenario':scenario}});
  const page=await context.newPage(), errors=[];
  page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error'&&scenario!=='error')errors.push(m.text());});
@@ -137,6 +145,9 @@ for(const scenario of scenarios) for(const width of [1440,768,390]) for(const th
   await page.getByRole('button',{name:'Стан',exact:true}).click();
   await page.getByText('Пошук обговорення',{exact:true}).waitFor();
   await page.screenshot({path:join(out,`operations-${width}-${theme}.png`),fullPage:true});
+  await page.getByRole('button',{name:'Джерела',exact:true}).click();
+  await page.getByText(/Тип: Канал/).waitFor();
+  await page.screenshot({path:join(out,`channels-${width}-${theme}.png`),fullPage:true});
  }
  if(scenario==='stale-refresh' && !await page.getByRole('button',{name:'Перевірити оновлення',exact:true}).isEnabled())issues.push('stale refresh locks control');
  reports.push({scenario,width,theme,issues:[...issues,...errors]});

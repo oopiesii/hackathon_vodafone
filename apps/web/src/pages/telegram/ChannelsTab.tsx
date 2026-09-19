@@ -2,7 +2,7 @@ import type { FormEvent } from "react";
 import { Badge, Card, Field } from "../../components/ui";
 import { send } from "../../lib/api";
 import { formatDateTime } from "../../lib/format";
-import { runtimeStatus } from "../../lib/labels";
+import { runtimeStatus, SOURCE_TYPES } from "../../lib/labels";
 import { checked, field, type Channel, type TabProps } from "./types";
 
 export function ChannelsTab({ state, workflowId, busy, run }: TabProps) {
@@ -40,7 +40,7 @@ export function ChannelsTab({ state, workflowId, busy, run }: TabProps) {
             <div className="stack">
               <div className="stack-sm">
                 <div className="record-head"><span className="record-title">@{c.username}</span><Badge tone={status.tone} title={c.status} dot>{status.label}</Badge></div>
-                <p className="note">Тип: {c.source_type || "визначається"} · Успішний збір: {formatDateTime(c.last_success_at, "ще немає")} · Остання спроба: {formatDateTime(c.last_polled_at, "ще немає")} · Позиція постів: {c.post_cursor}</p>
+                <p className="note">Тип: {c.source_type ? SOURCE_TYPES[c.source_type] || "Невідомий" : "визначається"} · Успішний збір: {formatDateTime(c.last_success_at, "ще немає")} · Остання спроба: {formatDateTime(c.last_polled_at, "ще немає")} · Позиція постів: {c.post_cursor}</p>
                 {c.last_error && <p className="item-reason">{c.last_error}</p>}
               </div>
               <div className="form-grid">

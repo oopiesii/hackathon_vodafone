@@ -9,6 +9,8 @@ export const TOPICS: Record<string, string> = {
   other: "Інше",
 };
 
+export const SOURCE_TYPES: Record<string, string> = { channel: "Канал", supergroup: "Супергрупа", forum: "Форум" };
+
 export const ROLES: Record<string, string> = { admin: "Адміністратор", analyst: "Аналітик", viewer: "Перегляд" };
 
 export const ITEM_STATES: Record<string, { label: string; tone: Tone }> = {
