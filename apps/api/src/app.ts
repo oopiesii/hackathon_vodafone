@@ -17,6 +17,7 @@ import { requireSession } from './auth/middleware.js';
 import { query } from './routes/telegram-admin.js';
 import { health } from "./routes/health.js";
 import { me } from "./routes/me.js";
+import { dashboard } from './routes/dashboard.js';
 import { analysis } from './routes/analysis.js';
 
 // CORS навмисно немає: браузер завжди ходить на той самий origin (Vite-проксі в dev, reverse proxy в проді).
@@ -46,6 +47,7 @@ app.route('/documents',documents);
 app.route('/shared',shared);
 app.route('/inbox',inbox);
 app.route('/analysis',analysis);
+app.route('/dashboard',dashboard);
 app.get('/workflows',requireSession,async c=>c.json({items:await query('select id,name from core.workflows order by id')}));
 
 app.notFound((c) => c.json({ error: "not_found" }, 404));

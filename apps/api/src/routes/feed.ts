@@ -3,6 +3,7 @@ import { HTTPException } from 'hono/http-exception';
 import { hasPermission } from '@ufv/shared/permissions';
 import { requireSession, type AppEnv } from '../auth/middleware.js';
 import { query } from './telegram-admin.js';
+import { dashboardFilters } from '../lib/dashboard-filters.js';
 import { telegramDetail } from '../lib/telegram-detail.js';
 
 export type ShareScope = {workflow_id:string;scope:'summary'|'posts'|'full';channel_ids:number[];topics:string[];name:string};
@@ -17,7 +18,8 @@ export function selection(params:Record<string,string>, review=false, share?:Sha
   if(share && String(share.workflow_id)!==workflow)throw new HTTPException(403);
   filters.push('s.workflow_id='+add(workflow));
   const decision=review ? params.decision || 'accepted' : 'accepted';
-  if(decision!=='all'){
+  if(decision==='visible')filters.push("coalesce(r.decision,m.decision) in ('accepted','review')");
+  else if(decision!=='all'){
     if(!['accepted','review','rejected'].includes(decision))throw new HTTPException(400);
     filters.push('coalesce(r.decision,m.decision)='+add(decision));
   }
@@ -27,7 +29,12 @@ export function selection(params:Record<string,string>, review=false, share?:Sha
   if(params.q){if(share?.scope==='summary')throw new HTTPException(403);filters.push('m.quote ilike '+add('%'+params.q.slice(0,200)+'%'));}
   if(params.topic)filters.push('m.category='+add(params.topic));
   if(params.kind)filters.push('m.kind='+add(params.kind));
-  return {sql:joins+' where '+filters.join(' and '),args};
+  const drilldown=Boolean(params.window||params.from||params.until||params.day||params.source_id||params.source_kind||params.brand||params.ids||params.negative||params.has_views||params.has_reactions||params.lag);
+  if(drilldown){
+    filters.push(...dashboardFilters(params,add));
+    filters.push(review?(decision==='visible'?"d.decision in ('accepted','review')":decision==='all'?"d.decision<>'deleted'":'d.decision='+add(decision)):"d.decision='accepted'");
+  }
+  return {sql:joins+(drilldown?' join core.dashboard_items d on d.id=m.id':'')+' where '+filters.join(' and '),args};
 }
 
 export async function getFeed(params:Record<string,string>,review=false,share?:ShareScope) {
