@@ -10,6 +10,7 @@ import { Metrics, MetricsTable, count } from "../components/dashboard/Metrics";
 import { IntegrationSlot } from "../components/IntegrationSlot";
 import { RefreshControl } from "../components/dashboard/RefreshControl";
 import { Impact } from "../components/dashboard/Impact";
+import { Summary } from "../components/dashboard/Summary";
 import { Signals } from "../components/dashboard/Signals";
 import { quantity } from "../lib/plural";
 import { api, can, errorText, type Me } from "../lib/api";
@@ -60,7 +61,7 @@ export function Dashboard({ me }: { me: Me | undefined }) {
         <Impact />
         <IntegrationSlot />
         <Card className="span-4" title="Конкуренти">{calculating ? waiting : <BarList data={data.competitors.map(c => ({ id: c.brand, label: c.brand === "kyivstar" ? "Київстар" : c.brand === "lifecell" ? "lifecell" : c.brand, value: c.count, href: c.href }))} />}</Card>
-        <Card className="span-12 dashboard-summary" title="Зведення періоду" actions={<Badge tone="secondary">{data.ai.label}</Badge>} footer={<Link className="btn btn-ghost btn-sm" to={data.ai.href}>Матеріали зведення<ArrowUpRight size={14} aria-hidden="true" /></Link>}><p>{data.ai.summary}</p></Card>
+        <Summary summary={data.ai} />
       </div>
       <details className="dashboard-methodology"><summary>Методика, покриття та обмеження</summary><ul>{data.methodology.map(line => <li key={line}>{line}</li>)}</ul><MetricsTable data={data} /><div className="dashboard-method-meta">Роль: {me?.user.role === "viewer" ? "лише прийняті матеріали" : "прийняті та на перевірці"}. Зріз: {time(data.start)} – {time(data.end)} (Київ).</div></details>
     </div>}
