@@ -3,7 +3,14 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./permissions": { "types": "./dist/permissions.d.ts", "default": "./dist/permissions.js" }
+    "./permissions": {
+      "types": "./dist/permissions.d.ts",
+      "default": "./dist/permissions.js"
+    },
+    "./dashboard": {
+      "types": "./dist/dashboard.d.ts",
+      "default": "./dist/dashboard.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

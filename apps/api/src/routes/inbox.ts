@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { requireSession, requirePermission, type AppEnv } from '../auth/middleware.js';
 import { query } from './telegram-admin.js';
+import { dashboardFilters } from '../lib/dashboard-filters.js';
 import { telegramDetail } from '../lib/telegram-detail.js';
 
 const states = ['pending', 'accepted', 'review', 'rejected', 'deleted'];
@@ -29,6 +30,9 @@ inbox.get('/', async c => {
     if (!['post', 'comment','group_message'].includes(params.kind)) throw new HTTPException(400);
     filters.push('kind=' + add(params.kind));
   }
+  const drilldownParams={...params};delete drilldownParams.source_id;delete drilldownParams.window;
+  const extra=dashboardFilters(drilldownParams,add);
+  if(extra.length)filters.push('id in (select d.raw_item_id from core.dashboard_items d where '+extra.join(' and ')+')');
   const base = ' from core.incoming_items' + (filters.length ? ' where ' + filters.join(' and ') : ' where true');
   const counts = await query('select state,count(*)::int count' + base + ' group by state', args);
   let selected = base;
