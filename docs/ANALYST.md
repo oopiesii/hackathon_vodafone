@@ -1,10 +1,10 @@
 # Постійний AI-шар: S1 і S2
 
-**Статус на 19.09.2026 UTC: реалізовано й перевірено в нічній гілці, production-приймання цього пакета ще не підтверджено.** Підстава — [PLAN_NIGHT.md](PLAN_NIGHT.md), WP8a/S2, і прямий нічний запуск користувача. Позначку готовності після розгортання оновлює відповідальний за реліз у цьому документі та [STATUS.md](STATUS.md).
+**Розгорнуто 19.09.2026, реліз підтверджено 22:19:12 UTC:** `main 6ba09d9`, тег images `night-20260919T221752Z`, міграції 0012, 0014–0016, 0030–0031. Окремий `analyst` healthy у стані **`waiting_key`**, runtime-ключ не встановлено; Telegram із `llm_allowed=true` — **0 джерел**. Це підтвердження розгортання WP8a/S2, а не реального нового LLM-прогону. **Повний I6 та 80 браузерних знімків ще перевіряються; нічний план не оголошено завершеним.** Підстава — [PLAN_NIGHT.md](PLAN_NIGHT.md), прямий нічний запуск користувача та післярелізна перевірка root; актуальне приймання — у [STATUS.md](STATUS.md).
 
-У production вже є інший шлях: завершений разовий Gemini/AGY-прогін Telegram і curated-реліз `main 581d0d7` з міграціями 0020–0022. Його результати використовуються в dashboard/feed; це не постійний `analyst` і не новий S2. Див. [ANALYSIS_ONCE.md](ANALYSIS_ONCE.md) та [CURATED_DASHBOARD.md](CURATED_DASHBOARD.md).
+У production також збережено окремий історичний шлях: завершений разовий Gemini/AGY-прогін Telegram і curated-класифікацію з міграцій 0020–0022. Його результати використовуються в dashboard/feed; це не постійний `analyst` і не новий S2. Див. [ANALYSIS_ONCE.md](ANALYSIS_ONCE.md) та [CURATED_DASHBOARD.md](CURATED_DASHBOARD.md).
 
-Цей документ описує підготовлений окремий Python-сервіс `analyst`, його права, збереження й інтеграцію. Разові скрипти та незалежний processor `rules-v2` збережено. Відсутність ключа є робочим станом сервісу; вона не скасовує семантичну браму workflow й не повертає pending-матеріали у curated-метрики через словниковий fallback.
+Цей документ описує розгорнутий окремий Python-сервіс `analyst`, його права, збереження й інтеграцію. Разові скрипти та незалежний processor `rules-v2` збережено. Відсутність ключа є робочим станом сервісу; вона не скасовує семантичну браму workflow й не повертає pending-матеріали у curated-метрики через словниковий fallback.
 
 ## Контракти
 
@@ -15,19 +15,21 @@
 - `GET /api/admin/ai/status`: heartbeat, mode `waiting_key|active|rate_limited|error`, model, безпечний last_error, limit_per_hour, items_last_hour, last_label_at/last_summary_at, sources із llm_allowed/llm_basis/rights_status. Лише admin. Ключі, endpoint та credentials не повертаються.
 - `PUT /api/admin/ai/sources/:id`: `{llm_allowed:boolean,llm_basis:string}`. Увімкнення вимагає підставу 10–1000 символів; RSS також `rights_status=allowed`. Зміна й підстава атомарно потрапляють у audit. Viewer/analyst отримують 403. UI не є межею прав.
 
-## Ефективний відбір і підготовлена інтеграція 0030
+## Ефективний відбір і розгорнуті 0030–0031
 
 Розгорнуті 0020–0022 ввели global gate: наявність completed analysis run у workflow переводить весь його основний відбір у семантичний режим. Нові або застарілі записи стають `pending`, навіть якщо старі словникові правила приймали їх. Чинне ручне рішення має пріоритет для тієї самої версії, крім явного карантину `test_source_ids`. Без завершеного прогону workflow може використовувати позначені правила.
 
-Підготовлена `0030_curated_atomic_rollups.sql` зберігає цю policy й додає постійний шлях: `scope.mode=continuous`, run `running|complete`, завершений `analyst_receipts` для raw version/model/prompt, чинні `llm_allowed`/basis, enabled workflow/source та RSS rights. One-shot мітки окремо перевіряються за workflow і scope source_ids/source_kind. `relevant` → `accepted`, `review` → `review`, інші результати → `rejected`; версії переданого контексту та поява раніше відсутнього parent перевіряються повторно. Саме ефективне рішення використовують curated feed, метрики та S2 provenance. Відсутність runtime-ключа не робить нові записи автоматично `accepted`.
+Розгорнута `0030_curated_atomic_rollups.sql` зберігає цю policy й додає постійний шлях: `scope.mode=continuous`, run `running|complete`, завершений `analyst_receipts` для raw version/model/prompt, чинні `llm_allowed`/basis, enabled workflow/source та RSS rights. One-shot мітки окремо перевіряються за workflow і scope source_ids/source_kind. `relevant` → `accepted`, `review` → `review`, інші результати → `rejected`; версії переданого контексту та поява раніше відсутнього parent перевіряються повторно. Саме ефективне рішення використовують curated feed, метрики та S2 provenance. Відсутність runtime-ключа не робить нові записи автоматично `accepted`.
 
-Для місяця 0030 готує фізичні атомарні покоління з effective decisions, окремими NEG/IRONIC, часом спостереження метрик та `rolling_7d_count`. Читання місячного dashboard/S2 не має звертатися до текстів чи labels. Числа, зокрема rolling 7d, стосуються часу покоління; цей час має бути видимим. Поки хоча б одне джерело потрібного scope dirty/без покоління, API приховує повний підсумок, а S2 відкладає виклик.
+Для місяця 0030 публікує фізичні атомарні покоління з effective decisions, окремими NEG/IRONIC, часом спостереження метрик та `rolling_7d_count`. Читання місячного dashboard/S2 не має звертатися до текстів чи labels. Числа, зокрема rolling 7d, стосуються часу покоління; цей час має бути видимим. Поки хоча б одне джерело потрібного scope dirty/без покоління, API приховує повний підсумок, а S2 відкладає виклик.
 
-Це відмінність від поточного production 0020–0022: його `curated_daily_rollups` ще рахується з поточних curated-матеріалів. **0030 та узгоджений API — підготовлений наступний реліз, не підтверджене production-розгортання.** Coverage і агрегати API читає одним snapshot; S2 evidence lookup під час інтеграції має використовувати curated-класифікацію. Invalidation охоплює labels/receipts/run, review/edit/delete, права, source move і залежний контекст.
+Це змінило попередній місячний live-view з 0020–0022: production тепер читає фізичні покоління. Coverage і агрегати API читає одним snapshot; S2 evidence lookup використовує curated-класифікацію. Invalidation охоплює labels/receipts/run, review/edit/delete, права, source move і залежний контекст.
+
+Розгорнута `0031_legacy_rss_semantic_scope.sql` підтримує старий completed RSS-прогін зі scope `rss=allowed` без поля `source_ids`. Виняток вимагає RSS-джерело, чинний `rights_status=allowed`, відсутній або RSS `source_kind`; порожній scope, blocked, явно порожній/null `source_ids` і Telegram не проходять. Це сумісність історичних результатів, а не дозвіл на нові Telegram-виклики.
 
 ## Читання S2 в dashboard
 
-S2 — окреме зведення за період, а не історичний one-shot brief на `/analysis`. У підготовленому UI є підпис режиму, час, модель, спостереження з дослівними доказами та межі покриття. API перевіряє scope, актуальність, вікно й доступні читачеві evidence; URL походять зі сховища. Місячне зведення посилається на scope/період агрегатів і не вигадує item-цитат.
+S2 — окреме зведення за період, а не історичний one-shot brief на `/analysis`. У розгорнутому UI є підпис режиму, час, модель, спостереження з дослівними доказами та межі покриття. API перевіряє scope, актуальність, вікно й доступні читачеві evidence; URL походять зі сховища. Місячне зведення посилається на scope/період агрегатів і не вигадує item-цитат.
 
 Поточний вхід S2 може містити лічильники rejected/pending/review дозволених джерел. Viewer не отримує такий змішаний body навіть після приховування окремих цитат: API повертає рольовий шаблонний fallback. Повний body доступний viewer лише коли весь модельний вхід був accepted та непорожній. Відсутність свіжого heartbeat означає непідтверджений стан сервісу; збережене зведення має власний час і не доводить, що сервіс зараз працює.
 
@@ -51,7 +53,7 @@ S1 обрізає нормалізований item до 40 KB і прямий �
 
 ## Runtime та розгортання
 
-Нижче — інструкція для підготовленого сервісу після приймання релізу, не запис виконаних production-команд. У цьому пакеті реальний runtime-ключ не встановлювався; Telegram-права не змінювалися.
+Сервіс уже розгорнуто; наведені нижче команди описують подальше налаштування, а не додавання ключа, виконане цим релізом. Реальний runtime-ключ відсутній; Telegram-права не змінювалися. `ufv-api`, `ufv-pipeline` та `ufv-analyst` мають тег `night-20260919T221752Z`. Єдиний дозволений нічний restart collectors використано під час цього релізу.
 
 `deploy/bootstrap.py` генерує окремий `DB_ANALYST_PASSWORD` у захищеному production.env, якщо він відсутній, створює login-роль і grants. Спершу bootstrap, потім Compose: `DB_ANALYST_PASSWORD` обов'язковий. Сервіс запускається non-root, readonly root filesystem, без capabilities, тільки backend/egress, 256 MiB; Telegram credentials й усі production.env у контейнер не монтуються.
 
@@ -76,18 +78,30 @@ docker compose --env-file /etc/ufv/production.env -f deploy/compose.yml up -d --
 
 Healthcheck перевіряє свіжий heartbeat (до 5 хвилин), незалежно від наявності ключа. Окремий heartbeat продовжується під час очікування HTTP. При недоступності NATS працює DB catch-up. Сервіс не перезапускає collectors і не змінює Caddy.
 
+## Відкат цього релізу
+
+Використовувати **лише** новий manifest, що повертає перевірений bridge API із coverage gate:
+
+```sh
+deploy/night-release.sh --rollback /var/lib/ufv/releases/night-20260919T221752Z.json
+```
+
+Схема залишається адитивно оновленою. Старі manifests 21:53/22:15 повертають API без належної перевірки покриття й після 0030 не є безпечним відкатом. Bridge для неповного місяця повертає український HTTP 503, а не часткові успішні числа. Деталі — [ROLLBACK_BRIDGE_REVIEW.md](ROLLBACK_BRIDGE_REVIEW.md). Наведення команди не означає, що відкат виконано.
+
 ## Перевірка інкременту
 
-Наведені перевірки підтверджують окремі контракти підготовленого коду. Вони не замінюють приймання злитого API/web/0030 та production smoke.
+Наведені перевірки підтверджують контракти коду й первинне післярелізне приймання. Повний I6/браузерний прогін ще триває; ці результати не є оцінкою якості реальної моделі.
 
 У `ufv_checks`: ролі, gate, аудит, synthetic RSS, HTTP mocks OpenAI-compatible/Anthropic, S1 upsert+dedup+parent version, відхилення невалідного JSON/цитат, S2 day/month, місяць при **відкликаному SELECT на analyst_items**, відкликання джерела приховує summary, NATS→mock→label, живий subprocess без ключа→heartbeat+rules summaries. Окремо перевірено review → приховування day/month, dirty → жодного модельного виклику, recompute → старий текст не повернувся; інвалідація всередині HTTP → результат не записаний. **27 тестів пройдено.** Тестові credentials мають redacted repr. Без реальних LLM-запитів, без Telegram-авторизації, без production fixtures.
+
+Перед повним релізом злитий backend на 0031 пройшов **133 тести**. Після релізу root підтвердив: analyst healthy/`waiting_key`, Telegram gate вимкнений; dashboard **24h — 0, 7d — 33, 30d — 34, Vodafone 7d — 2**, джерела/конкуренти/переходи/документи узгоджені. Місячний API-запит — **0,249 с**, день — **3,779 с**, тиждень — **10,333 с** під браузерним навантаженням. Це контрольні числа й окремі вимірювання, не стабільна затримка чи SLA. Модельні шляхи цього сервісу перевірялися mocks; реального runtime-виклику з платним ключем не заявлено.
 
 Команди: `npm run typecheck`, `npm run build`; `UFV_TEST_ENV=/protected/ufv-checks.json python -m pytest tests/test_analyst.py tests/test_analyst_runtime.py tests/test_analysis_once.py -q`; `docker build -f deploy/Dockerfile.analyst -t ufv-analyst:night-check .`. Runtime-тести серіалізувати з іншими suites: спільна `ufv_checks` використовується їхніми reset fixtures.
 
 Security review за локальним skill `security-audit`: **Pass after fixes**, залишковий ризик **Medium** через невиміряну модельну семантику й точність маскування контактів. Перевірено ізоляцію БД, prompt/output boundaries, cap/retries, safe errors, секрети, endpoint allowlist та server-side permission. Під час тестів виправлено upsert, який потребував зайвого SELECT на label; права не розширено. Secret scanner для `services/analyst` — без common secret patterns. Реальний контракт обраної комерційної моделі та її квоти потребують окремої перевірки після дозволеного додавання ключа.
 
-Для інтеграції 0030 підготовлено окремі SQL-регресії `tests/test_curated_rollups.py`: scoped one-shot/continuous, точні версії, права й контекст, інвалідація поколінь, S2 та відсутність текстових відношень у місячному read path. Їхній результат не слід додавати до числа 27 як повторну оцінку якості моделі.
+Для інтеграції 0030–0031 виконано окремі SQL-регресії `tests/test_curated_rollups.py`: scoped one-shot/continuous, точні версії, права й контекст, інвалідація поколінь, S2 та відсутність текстових відношень у місячному read path. Їхній результат не слід додавати до числа 27 як повторну оцінку якості моделі.
 
-У production 19.09 о 21:53 UTC розгорнуті security-виправлення: окремий клієнтський кеш для сеансу й підтверджених прав; незмінний share scope після redeem; binding shared `/me`/feed/documents до ідентифікатора посилання. Пізня широка cookie не має розширювати вузький зріз. Перевірено 7 auth-cache сценаріїв, 4 браузерні cookie-race сценарії та 2 API-регресії на `ufv_checks`; докладніше [AUTH_CACHE_REVIEW.md](AUTH_CACHE_REVIEW.md). Production-приймання API/UI пройдено; manifest — `/var/lib/ufv/releases/night-20260919T215217Z.json`. Розгортання analyst і 0030 цим релізом не виконувалося.
+У production 19.09 о 21:53 UTC розгорнуті security-виправлення: окремий клієнтський кеш для сеансу й підтверджених прав; незмінний share scope після redeem; binding shared `/me`/feed/documents до ідентифікатора посилання. Пізня широка cookie не має розширювати вузький зріз. Перевірено 7 auth-cache сценаріїв, 4 браузерні cookie-race сценарії та 2 API-регресії на `ufv_checks`; докладніше [AUTH_CACHE_REVIEW.md](AUTH_CACHE_REVIEW.md). Production-приймання того security-інкременту пройдено; analyst і 0030 у ньому ще не розгорталися. Повний реліз 22:19:12 UTC включає ці виправлення; для відкату тепер застосовується лише новий manifest, наведений нижче.
 
-S3/S4/S6/S7, автоматичні інциденти й чат на живих даних не реалізовані цим пакетом. UI Network/Threads та калькулятор із WP3/WP4 — окремі демонстраційні можливості, а не модельна телеметрія чи виміряні збитки. Завершення інтеграції dashboard/UI, реліз і production smoke належать відповідальному за розгортання.
+S3/S4/S6/S7, автоматичні інциденти й чат на живих даних не реалізовані цим пакетом. UI Network/Threads та калькулятор із WP3/WP4 — окремі демонстраційні можливості, а не модельна телеметрія чи виміряні збитки. Ці UI-можливості вже розгорнуті, зовнішні Network/Threads-інтеграції не підключено. Завершення повного I6 та фінальну передачу веде відповідальний за розгортання.
