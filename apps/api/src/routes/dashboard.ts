@@ -184,7 +184,7 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
   freshness:freshnessRows.map(r=>({...r,last_success_at:r.last_success_at?iso(r.last_success_at):null,heartbeat_at:r.heartbeat_at?iso(r.heartbeat_at):null})),
   competitors:['kyivstar','lifecell'].map(brand=>{const rows=(window==='30d'?aggregate:items).filter(i=>i.brand===brand);return {brand,count:window==='30d'?sum(rows.map(i=>i.count)):rows.length,negative:window==='30d'?sum(rows.map(i=>i.negative_count)):rows.filter(i=>i.negative).length,href:href({brand})};}),
   ai:{status:'rules',label:'Результат правил · AI очікує ключ',summary:`За вікно — ${mentions} тематичних матеріалів. ${window==='30d'?'Місячні дані агреговані.':`Високий сигнал: ${criticalIds.length} матеріалів за 24 години.`}`,href:href()},
-  methodology:['Часове вікно: останні 24 години / 7 днів; 30 календарних днів за Києвом включно із сьогодні. Невідома дата публікації → час збору для включення до вікна, але не для затримки.',
+  methodology:['Часове вікно: останні 24 години / 7 днів; 30 календарних днів за місцевим часом України включно із сьогодні. Невідома дата публікації → час збору для включення до вікна, але не для затримки.',
    'Негатив тексту визначено словниковими правилами; точність не виміряна. Сигнал не доводить реальний збій.',
    'Високий сигнал: ≥3× медіани останніх 30 видимих постів джерела або ознаки збою у ≥3 джерелах за 2 години. Середній: негатив у ≥2 джерелах. Пороги — припущення.',
    'Статус Vodafone враховує відкриті сигнали за 24 години; відхилення реакцій від середнього попередніх доступних днів (до 6) ≥10 п.п. підвищує стан до «Увага». Це евристика.',

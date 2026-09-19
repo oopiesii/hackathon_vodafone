@@ -41,6 +41,6 @@ export function HourlyBars({ data, daily }: { data: DashboardBucket[]; daily: bo
       })}
     </svg>
     <div className="chart-readout" id={tipId} aria-live="polite">{selected ? <><strong>{number(selected.count)}</strong> <span>{date(selected.at, daily)} · {Object.entries(selected.topics).map(([t, n]) => `${TOPICS[t] ?? t}: ${number(n)}`).join("; ")}</span></> : <span>Оберіть стовпчик, щоб відкрити матеріали</span>}</div>
-    <details className="chart-table"><summary>Таблиця значень</summary><div className="tablewrap"><table><thead><tr><th>{daily ? "Дата" : "Година"} · Київ</th><th>Згадки</th><th>Теми</th></tr></thead><tbody>{data.map(d => <tr key={d.at}><td><Link to={d.href}>{date(d.at, daily)}</Link></td><td>{number(d.count)}</td><td>{Object.entries(d.topics).map(([t, n]) => `${TOPICS[t] ?? t}: ${number(n)}`).join("; ") || "—"}</td></tr>)}</tbody></table></div></details>
+    <details className="chart-table"><summary>Таблиця значень</summary><div className="tablewrap"><table><thead><tr><th>{daily ? "Дата" : "Година"} · місцевий час</th><th>Згадки</th><th>Теми</th></tr></thead><tbody>{data.map(d => <tr key={d.at}><td><Link to={d.href}>{date(d.at, daily)}</Link></td><td>{number(d.count)}</td><td>{Object.entries(d.topics).map(([t, n]) => `${TOPICS[t] ?? t}: ${number(n)}`).join("; ") || "—"}</td></tr>)}</tbody></table></div></details>
   </div>;
 }
