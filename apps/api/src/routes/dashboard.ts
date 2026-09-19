@@ -4,6 +4,7 @@ import { hasPermission } from '@ufv/shared/permissions';
 import type { DashboardResponse, DashboardMetric, DashboardWindow, DashboardSignal } from '@ufv/shared/dashboard';
 import { requireSession, type AppEnv } from '../auth/middleware.js';
 import { dashboardSummary } from '../lib/dashboard-summary.js';
+import { operatorCountsSql, wideOperatorCountsSql, growthSql } from '../lib/dashboard-queries.js';
 import { reactionAttention, criticalAttention } from '../lib/metric-attention.js';
 import { query } from './telegram-admin.js';
 
@@ -93,10 +94,7 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
     views,reactions,metrics_observed_at,lag_seconds,watch_active
     from core.curated_visible_items where workflow_id=$1 and event_at>=$2 and event_at<=$3
     and decision=any($4::text[]) order by event_at,id`,[workflow,new Date(now-7*24*HOUR),end,includeReview?['accepted','review']:['accepted']]),
-  window==='30d'||!review?Promise.resolve([]):query(`select source_kind,decision,count(*)::int count,
-    coalesce(array_agg(lag_seconds) filter(where lag_seconds is not null),'{}') lag_samples
-    from core.curated_items where workflow_id=$1 and event_at>=$2 and event_at<=$3 and decision<>'deleted'
-    group by source_kind,decision`,[workflow,start,end]),
+  window==='30d'||!review?Promise.resolve([]):query(window==='24h'?operatorCountsSql:wideOperatorCountsSql,[workflow,start,end]),
   query('select active_seconds,cooling_seconds,sleeping_seconds from core.telegram_watch_policies where workflow_id=$1',[workflow]),
  ]);
  const coverage=monthly[0]?.coverage||{source_count:0,dirty_sources:0,generated_at:null};
@@ -177,13 +175,8 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
  const reachMeasured=window==='30d'?sum(aggregate.map(i=>i.views_measured)):negative.filter(i=>i.views!==null).length;
  const negativeReach=window==='30d'?sum(aggregate.map(i=>Number(i.negative_reach))):sum(negative.filter(i=>i.views!==null).map(i=>Number(i.views)));
  const complaints=window==='30d'?sum(aggregate.map(i=>i.complaints)):items.filter(i=>i.negative&&i.kind==='comment'&&i.watch_active).length;
- const growthRows=window==='30d'||!items.length?[]:await query(`select item_id,count(*)::int observations,
-  (array_agg(views order by observed_at desc,id desc))[1] last_views,(array_agg(views order by observed_at,id))[1] first_views,
-  extract(epoch from max(observed_at)-min(observed_at)) seconds
-  from core.telegram_metrics where item_id=any($1::bigint[]) and views is not null
-  and observed_at>=(select published_at from core.curated_visible_items d where d.raw_item_id=core.telegram_metrics.item_id)
-  and observed_at<=(select published_at+interval '2 hours' from core.curated_visible_items d where d.raw_item_id=core.telegram_metrics.item_id)
-  group by item_id having count(*)>=2 and max(observed_at)>min(observed_at)`,[items.map(i=>i.raw_item_id)]);
+ const growthRows=window==='30d'||!items.length?[]:await query(growthSql,
+  [items.map(i=>i.raw_item_id),workflow,includeReview?['accepted','review']:['accepted'],start,end]);
  const growth=growthRows.filter(r=>Number(r.last_views)>=Number(r.first_views)).map(r=>{const i=items.find(i=>String(i.raw_item_id)===String(r.item_id))!;return {id:String(i.id),views_per_hour:(Number(r.last_views)-Number(r.first_views))/Number(r.seconds)*3600,observations:r.observations,href:href({ids:String(i.id)})};}).sort((a,b)=>b.views_per_hour-a.views_per_hour).slice(0,10);
  const countSeries=hourly.map(b=>b.count);
  const reactionShares=window==='30d'?[]:hourly.map(b=>reactions(items.filter(i=>Math.floor(time(i.event_at)/HOUR)===Math.floor(time(b.at)/HOUR))).negative_share);
