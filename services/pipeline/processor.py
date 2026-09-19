@@ -103,10 +103,38 @@ async def consume(db):
                 await nc.close()
 
 
+def refresh_rollup_batch(db, deferred, *, budget_seconds=15):
+    """Publish source generations separately so a slow source cannot starve the queue."""
+    started=time.monotonic()
+    candidates=db.all("""select source_id from core.dashboard_rollup_state
+        where dirty or generated_at is null or generated_at<now()-interval '60 seconds'
+        order by generated_at nulls first,source_id""")
+    completed=0
+    for row in candidates:
+        ident=row['source_id']
+        if time.monotonic()-started>=budget_seconds:break
+        if deferred.get(ident,0)>time.monotonic():continue
+        try:
+            with db.pool.connection() as conn:
+                # Set before SELECT: changing statement_timeout inside a function does
+                # not reliably bound the already-running top-level statement.
+                conn.execute("set local statement_timeout='5s'")
+                conn.execute("set local lock_timeout='1s'")
+                conn.execute("set local jit=off")
+                conn.execute('select core.refresh_dashboard_rollups(%s)',(ident,))
+            deferred.pop(ident,None)
+            completed+=1
+        except Exception as exc:
+            deferred[ident]=time.monotonic()+60
+            log.warning('dashboard source %s rollup retry: %s',ident,type(exc).__name__)
+    return completed
+
+
 async def main():
     db=DB()
     subscriber=asyncio.create_task(consume(db))
     last_rollup = 0.0
+    deferred_rollups = {}
     try:
         while True:
             rows=db.all('''select i.id from raw.items i join core.sources s on s.id=i.source_id
@@ -123,7 +151,7 @@ async def main():
                 process(db,row['id'])
             if time.monotonic() - last_rollup >= 2:
                 try:
-                    db.execute('select core.refresh_dashboard_rollups()')
+                    await asyncio.to_thread(refresh_rollup_batch,db,deferred_rollups)
                 except Exception as exc:
                     log.warning('dashboard rollup retry: %s', type(exc).__name__)
                 last_rollup = time.monotonic()
