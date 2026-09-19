@@ -27,7 +27,7 @@ export function SharedDashboard() {
         <ThemeToggle compact />
       </header>
       <main className="content">
-        {error ? <Alert tone="danger">Посилання недійсне або відкликане. {error}</Alert>
+        {error ? <Alert tone="danger">{error}</Alert>
           : info ? <Feed shared workflowId={String(info.workflow_id)} title={info.name || "Спільний dashboard"} badge={<Badge tone="secondary">Доступ за посиланням</Badge>} />
           : <p className="loading" role="status">Перевірка доступу…</p>}
         <p className="note">Доступ обмежений налаштуваннями адміністратора та строком дії посилання.</p>
