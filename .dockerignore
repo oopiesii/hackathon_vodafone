@@ -2,6 +2,7 @@
 !deploy/
 !deploy/Dockerfile.node
 !deploy/Dockerfile.pipeline
+!deploy/Dockerfile.analyst
 !package.json
 !package-lock.json
 !apps/
