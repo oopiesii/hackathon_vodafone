@@ -60,9 +60,10 @@ def validate_aggregate_summary(output, counts):
 
 
 def summarize_by_rules(counts):
-    return {'headline': f"За вікно: {counts['total']} дозволених матеріалів; {counts['accepted']} прийнято правилами.",
+    return {'headline': f"Матеріалів за період у джерелах із дозволом на AI: {counts['total']}; прийнятих: {counts['accepted']}.",
             'observations': [],
-            'limitations': ['Зведення за правилами; AI очікує ключ або доступний ліміт.',
+            'limitations': ['Шаблонне зведення агрегатів; нового модельного висновку немає.',
+                            'Прийняті матеріали визначені поточним ефективним відбором, з урахуванням ручних рішень.',
                             'Лише джерела з дозволом на AI; це не повне покриття телекому.']}
 
 
@@ -116,7 +117,7 @@ def summarize_window(db, workflow_id, window, provider, config):
         monthly_prompt = PROMPT + '''\nЦе місячні добові агрегати, без текстів.
 observations=[]; headline — лише стислий опис переданих чисел, без причин чи прогнозів.
 aggregate_facts скопіюйте дослівно. Числа в headline/limitations можуть бути лише значеннями aggregate_facts або 30.
-negative_count — евристика правил, не виміряна модельна тональність. Незалежність джерел не встановлена.'''
+negative_count — кількість прийнятих матеріалів із негативною оцінкою в ефективному відборі; це не оцінка настроїв усіх абонентів. Незалежність джерел не встановлена.'''
         output = provider.complete_json(monthly_prompt,aggregate_schema(counts),{
             'provenance':'daily_rollups','window':window,'workflow_id':workflow_id,
             'window_start':start.isoformat(),'window_end':end.isoformat(),'aggregate_facts':counts})
@@ -125,7 +126,7 @@ negative_count — евристика правил, не виміряна мод
             mode,model = 'ai',config.model
     elif config.enabled and items and reserve_budget(db,config.max_items_per_hour,len(items)):
         # LLM-SEAM(S2-summary): агрегати вікна + дозволені докази → core.ai_summaries.
-        # Без ключа summarize_by_rules() зберігає чесний результат правил.
+        # Без ключа summarize_by_rules() формує шаблон за ефективними агрегатами.
         output = provider.complete_json(PROMPT,SCHEMA,{
             'window':window,'window_start':start.isoformat(),'window_end':end.isoformat(),
             'aggregates':counts,'evidence_sample_limit':20,'items':items})

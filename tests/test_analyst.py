@@ -4,6 +4,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import inspect
 import json
 from pathlib import Path
+import re
 import sys
 import threading
 
@@ -11,7 +12,7 @@ import pytest
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'services'))
 from analyst.provider import Config,NullProvider,OpenAICompatibleProvider,AnthropicProvider,ProviderError,load_config,make_provider
-from analyst.summary import validate_aggregate_summary,validate_summary
+from analyst.summary import SCHEMA as SUMMARY_SCHEMA,summarize_by_rules,validate_aggregate_summary,validate_summary
 from analyst.validation import SCHEMA,validate,check_schema
 from scripts import analyze_once_agy
 
@@ -95,6 +96,17 @@ def test_mock_http_key_path_and_strict_schema(mock_llm,provider):
 
 def test_summary_evidence_and_monthly_numeric_provenance():
     counts={'total':20,'accepted':2,'sources':3,'negative_count':1}
+    # A template describes the accepted effective decisions, which may come from
+    # semantic labels or human review. It must not claim they are rules results.
+    for scoped in [counts,{'total':0,'accepted':0,'sources':0,'undated':0}]:
+        before=copy.deepcopy(scoped)
+        fallback=summarize_by_rules(scoped)
+        check_schema(fallback,SUMMARY_SCHEMA)
+        assert re.findall(r'\d+',fallback['headline'])==[str(scoped['total']),str(scoped['accepted'])]
+        assert 'джерелах із дозволом на AI' in fallback['headline']
+        assert 'прийнято правилами' not in fallback['headline']
+        assert fallback['observations']==[] and 'Шаблонне' in fallback['limitations'][0]
+        assert scoped==before
     result={'headline':'Прийнято 2 з 20 матеріалів.','observations':[],
             'limitations':['Лише дозволені джерела.'],'aggregate_facts':counts}
     assert validate_aggregate_summary(result,counts)==result
