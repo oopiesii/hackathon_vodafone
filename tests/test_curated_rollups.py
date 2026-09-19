@@ -29,11 +29,12 @@ def db():
         for name in ['0020_curated_dashboard.sql','0021_curated_visible_items.sql','0022_curated_candidate_lookup.sql']:
             saved=conn.execute('select checksum from public.schema_migrations where name=%s',(name,)).fetchone()
             assert saved and saved['checksum']==hashlib.sha256((ROOT/'db/migrations'/name).read_bytes()).hexdigest()
-        applied=conn.execute("select checksum from public.schema_migrations where name='0030_curated_atomic_rollups.sql'").fetchone()
-        if applied:
-            assert applied['checksum']==hashlib.sha256((ROOT/'db/migrations/0030_curated_atomic_rollups.sql').read_bytes()).hexdigest()
-        else:
-            conn.execute((ROOT/'db/migrations/0030_curated_atomic_rollups.sql').read_text())
+        for name in ['0030_curated_atomic_rollups.sql','0031_legacy_rss_semantic_scope.sql']:
+            applied=conn.execute('select checksum from public.schema_migrations where name=%s',(name,)).fetchone()
+            if applied:
+                assert applied['checksum']==hashlib.sha256((ROOT/'db/migrations'/name).read_bytes()).hexdigest()
+            else:
+                conn.execute((ROOT/'db/migrations'/name).read_text())
         try:yield conn
         finally:conn.rollback()
 
@@ -291,3 +292,28 @@ def test_normal_processor_new_and_late_context_retry_stay_pending_without_dirty_
     assert state(db,s)['dirty'] is True
     process(adapter,raw)
     assert state(db,s)['dirty'] is True
+
+
+def test_legacy_rss_scope_requires_current_rights_and_excludes_telegram(db):
+    w=workflow(db);rss=source(db,w,'rss');blocked=source(db,w,'rss');tg=source(db,w)
+    accepted,_=item(db,rss,'accepted');noise,_=item(db,rss,'noise');blocked_raw,_=item(db,blocked);telegram,_=item(db,tg)
+    db.execute("update core.rss_sources set rights_status='blocked' where source_id=%s",(blocked,))
+    run_id=run(db,w,[])
+    legacy={'rss':'allowed','excluded_telegram':29622,'telegram_source_ids':[],'telegram_rights_basis':''}
+    db.execute('update core.analysis_runs set scope=%s where id=%s',(Jsonb(legacy),run_id))
+    label(db,run_id,accepted);label(db,run_id,noise,'unrelated');label(db,run_id,blocked_raw);label(db,run_id,telegram)
+    assert decision(db,accepted)=='accepted' and decision(db,noise)=='rejected'
+    assert decision(db,blocked_raw)=='pending' and decision(db,telegram)=='pending'
+    refresh(db);assert count(db,w)==1
+    db.execute("update core.rss_sources set rights_status='blocked' where source_id=%s",(rss,))
+    assert state(db,rss)['dirty'] and decision(db,accepted)=='pending' and count(db,w)==0
+    refresh(db);assert count(db,w)==0
+
+
+def test_legacy_rss_is_not_a_blanket_empty_or_explicitly_excluded_scope(db):
+    w=workflow(db);s=source(db,w,'rss');raw,_=item(db,s);run_id=run(db,w,[])
+    label(db,run_id,raw)
+    for scope in [{},{'rss':'blocked'},{'rss':'allowed','source_ids':[]},{'rss':'allowed','source_ids':None},
+                  {'rss':'allowed','source_kind':'telegram'}]:
+        db.execute('update core.analysis_runs set scope=%s where id=%s',(Jsonb(scope),run_id))
+        assert decision(db,raw)=='pending'

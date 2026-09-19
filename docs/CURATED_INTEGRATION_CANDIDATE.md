@@ -63,3 +63,9 @@ npm run build
 ```
 
 Runner використовує API runtime-роль на `http://127.0.0.1:18203`, а fixtures — власника виключно ufv_checks; після тестів сервер зупиняється. Для acceptance root підготовлено `/tmp/ufv-night-acceptance-run.py`: запускає built API, scripts/check_curated_dashboard.py із правильними UFV_TEST_ENV/UFV_CHECK_ORIGIN та завершує сервер. Production-вимірювання живих dashboard 24h/7d/30d після релізу належать root; цей потік не розгортав сервіс.
+
+## Сумісність першого RSS-прогону
+
+Read-only production-аудит root виявив старий completed RSS run із scope `{"rss":"allowed","excluded_telegram":29622,"telegram_source_ids":[],"telegram_rights_basis":""}` без source_ids. Новий 0031 додає лише цей явний legacy RSS-контракт: source_ids відсутній, rss=allowed, джерело RSS, чинний rights_status=allowed, source_kind відсутній або rss. Порожній scope, blocked, explicit empty/null source_ids та суперечливий source_kind=telegram не дають дозволу. Telegram через цей виняток не проходить. 0030 лишився незмінним після застосування.
+
+Regression відтворює relevant/unrelated RSS, blocked RSS та Telegram у тому самому workflow, наступне відкликання дозволу й перерахунок; окремо перевіряє неоднозначні/порожні scope. **20 targeted tests passed** перед фіксацією 0031. API й формулу NEG ця міграція не змінює.
