@@ -9,6 +9,7 @@ export function dashboardFilters(params:Record<string,string>,add:(value:unknown
  }
  if(params.day){if(!/^\d{4}-\d\d-\d\d$/.test(params.day))throw new HTTPException(400);filters.push(`(${field('event_at')} at time zone 'Europe/Kyiv')::date=`+add(params.day)+'::date');}
  if(params.source_id){if(!/^[1-9]\d{0,14}$/.test(params.source_id))throw new HTTPException(400);filters.push(field('source_id')+'='+add(params.source_id));}
+ if(params.source_ids){const ids=params.source_ids.split(',');if(ids.length>1000||ids.some(id=>!/^\d{1,15}$/.test(id)))throw new HTTPException(400);filters.push(field('source_id')+'=any('+add(ids)+'::bigint[])');}
  if(params.source_kind){if(!['rss','telegram'].includes(params.source_kind))throw new HTTPException(400);filters.push(field('source_kind')+'='+add(params.source_kind));}
  if(params.brand){if(!['vodafone','kyivstar','lifecell','telecom'].includes(params.brand))throw new HTTPException(400);filters.push(field('brand')+'='+add(params.brand));}
  if(params.ids){const ids=params.ids.split(',');if(ids.length>1000||ids.some(id=>!/^\d{1,15}$/.test(id)))throw new HTTPException(400);filters.push(field('id')+'=any('+add(ids)+'::bigint[])');}

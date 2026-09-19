@@ -30,7 +30,7 @@ export function selection(params:Record<string,string>, review=false, share?:Sha
   if(params.q){if(share?.scope==='summary')throw new HTTPException(403);filters.push('m.quote ilike '+add('%'+params.q.slice(0,200)+'%'));}
   if(params.topic)filters.push('m.category='+add(params.topic));
   if(params.kind)filters.push('m.kind='+add(params.kind));
-  const drilldown=Boolean(params.window||params.from||params.until||params.day||params.source_id||params.source_kind||params.brand||params.ids||params.negative||params.has_views||params.has_reactions||params.lag);
+  const drilldown=Boolean(params.window||params.from||params.until||params.day||params.source_id||params.source_ids||params.source_kind||params.brand||params.ids||params.negative||params.has_views||params.has_reactions||params.lag);
   if(drilldown){
     filters.push(...dashboardFilters(params,add));
     filters.push(review?(decision==='visible'?"d.decision in ('accepted','review')":decision==='all'?"d.decision<>'deleted'":'d.decision='+add(decision)):"d.decision='accepted'");

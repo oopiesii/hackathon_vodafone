@@ -21,7 +21,7 @@ export type DashboardResponse = {
  lag_by_service:Array<{service:string;median_seconds:number|null;measured:number;href:string}>;
  freshness:Array<{service:string;enabled:boolean;last_success_at:string|null;heartbeat_at:string|null}>;
  competitors:Array<{brand:string;count:number;negative:number;href:string}>;
- ai:{status:'waiting_key'|'rules';label:string;summary:string;href:string};
+ ai:DashboardSummary;
  methodology:string[];
 };
 
@@ -29,4 +29,12 @@ export type RefreshRequest = {
  id:string;workflow_id:string;service:'telegram'|'rss';
  status:'pending'|'running'|'completed'|'deferred'|'disabled'|'failed';
  requested_at:string;started_at:string|null;completed_at:string|null;detail:string;
+};
+
+export type DashboardSummary = {
+ status:'waiting_key'|'rules'|'ready'|'pending'|'unavailable'|'error'|'rate_limited';
+ label:string;summary:string;href:string;mode?:'ai'|'rules';
+ generated_at?:string|null;model?:string|null;window_start?:string;window_end?:string;
+ observations?:Array<{text:string;evidence:Array<{id:string;raw_item_id:string;quote:string;url:string;href:string}>}>;
+ limitations?:string[];coverage?:{scope:'allowed_sources';evidence_sample:number;note:string};
 };

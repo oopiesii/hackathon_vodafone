@@ -3,6 +3,7 @@ import { HTTPException } from 'hono/http-exception';
 import { hasPermission } from '@ufv/shared/permissions';
 import type { DashboardResponse, DashboardMetric, DashboardWindow, DashboardSignal } from '@ufv/shared/dashboard';
 import { requireSession, type AppEnv } from '../auth/middleware.js';
+import { dashboardSummary } from '../lib/dashboard-summary.js';
 import { query } from './telegram-admin.js';
 
 type Item = Record<string, any>;
@@ -214,6 +215,7 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
   result.counts={accepted:0};result.complaints={count:0,per_hour:0,href:href({kind:'comment'}),note:'Згортки перераховуються.'};
   result.ai.summary='Згортки перераховуються; підсумок з’явиться після завершення.';
  }
+ result.ai=await dashboardSummary(workflow,window,review,result.ai,window!=='30d'||coverage.dirty_sources===0);
  return result;
 }
 export const dashboard=new Hono<AppEnv>().get('/',requireSession,async c=>c.json(await getDashboard(c.req.query(),hasPermission(c.get('user').role,{incident:['edit']}))));
