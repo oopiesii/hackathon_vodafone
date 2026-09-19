@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime, timezone
 from .bus import publish_outbox
 from .db import DB
+from .refresh import apply_refresh_requests
 from .rss_fetch import FeedError, fetch, parse
 
 log = logging.getLogger('pipeline.rss')
@@ -106,6 +107,10 @@ async def main():
     pending = set()
     try:
         while True:
+            try:
+                apply_refresh_requests(db, 'rss')
+            except Exception as exc:
+                log.warning('refresh retry: %s', type(exc).__name__)
             for done in list(pending):
                 if done.done():
                     pending.remove(done)

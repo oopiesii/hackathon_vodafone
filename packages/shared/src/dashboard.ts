@@ -4,7 +4,7 @@ export type DashboardMetric = { value:number|null; unit:string; href:string; ser
 export type DashboardBucket = { at:string; count:number; topics:Record<string,number>; href:string };
 export type DashboardSignal = { id:string; title:string; topic:string; brand:string; level:'h'|'m'|'l'; count:number; sources:number; spread:number; action:'none'|'investigating'|'responding'|'resolved'; href:string; evidence:Array<{id:string;url:string;quote:string;published_at:string|null}>; reason:string };
 export type DashboardResponse = {
- version:1; aggregate_updated_at?:string|null; workflow_id:string; window:DashboardWindow; start:string; end:string; timezone:'Europe/Kyiv'; generated_at:string; aggregated:boolean;
+ version:1; aggregation?:{complete:boolean;dirty_sources?:number;source_count?:number;generated_at:string|null;note:string}; aggregate_updated_at?:string|null; workflow_id:string; window:DashboardWindow; start:string; end:string; timezone:'Europe/Kyiv'; generated_at:string; aggregated:boolean;
  visibility:'accepted'|'accepted_review';
  brand_status:{level:'calm'|'attention'|'critical'|'unknown';title:string;reason:string;negative_delta_pp:number|null;href:string};
  metrics:{mentions:DashboardMetric;critical:DashboardMetric;negative_share:DashboardMetric;negative_reach:DashboardMetric;collection_lag:DashboardMetric;noise?:DashboardMetric};
@@ -23,4 +23,10 @@ export type DashboardResponse = {
  competitors:Array<{brand:string;count:number;negative:number;href:string}>;
  ai:{status:'waiting_key'|'rules';label:string;summary:string;href:string};
  methodology:string[];
+};
+
+export type RefreshRequest = {
+ id:string;workflow_id:string;service:'telegram'|'rss';
+ status:'pending'|'running'|'completed'|'deferred'|'disabled'|'failed';
+ requested_at:string;started_at:string|null;completed_at:string|null;detail:string;
 };

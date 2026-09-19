@@ -12,6 +12,7 @@ from .db import DB, decrypt
 from .raw import save_item, delete_items
 from .metrics import save_snapshot
 from . import watch
+from .refresh import apply_refresh_requests
 from .telegram_jobs import source_type, describe, observe_access, run_one
 
 log=logging.getLogger('pipeline.telegram')
@@ -46,6 +47,10 @@ class Collector:
     async def run(self):
         try:
             while True:
+                try:
+                    apply_refresh_requests(self.db, 'telegram')
+                except Exception as exc:
+                    log.warning('refresh retry: %s', type(exc).__name__)
                 accounts=self.db.all('''select a.*,s.cooldown_until from core.telegram_accounts a
                     left join raw.account_status s on s.account_id=a.id where a.enabled and a.session is not null and a.api_id is not null and a.api_hash is not null''') if self.db.enabled() else []
                 wanted={a['id']:a for a in accounts}
