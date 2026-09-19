@@ -59,7 +59,10 @@ class Analyst:
                             set attempted_at=now(),config_version=excluded.config_version''',
                             (row['workflow_id'],window,config_version))
                         try:
-                            summarize_window(self.db,row['workflow_id'],window,provider,config)
+                            result=summarize_window(self.db,row['workflow_id'],window,provider,config)
+                            if result in ('rollup_pending','input_changed'):
+                                self.db.execute('''update core.analyst_summary_schedule set attempted_at=now()-interval '15 minutes'
+                                    where workflow_id=%s and "window"=%s''',(row['workflow_id'],window))
                         except (ProviderError,ValueError) as exc:
                             code = str(exc) if isinstance(exc,ProviderError) else 'evidence_validation_failed'
                             self.heartbeat(config,'error',code)

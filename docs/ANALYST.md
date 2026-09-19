@@ -15,6 +15,8 @@
 
 Міграція `0012_analyst.sql` адитивна. Типово `sources.llm_allowed=false`; тільки вже дозволені RSS увімкнено на підставі нічного доручення. **Telegram автоматично не вмикається.** Нові джерела також типово false. Для RSS сама зміна прапорця не обходить `blocked` чи `pending`.
 
+`0015_analyst_freshness.sql` доповнює покоління агрегатів із `0014_dashboard_coverage.sql`. Покриття, числа й докази S2 читаються в одному repeatable-read snapshot. Місячний виклик відкладається без витрат ліміту, якщо хоча б одне дозволене джерело dirty або ще не має покоління агрегатів. Після HTTP звіряється `invalidated_at`; зміна під час виклику відкидає весь результат. `body.provenance.source_states` фіксує timestamp покоління та інвалідації. Новий review/edit/delete приховує старе зведення негайно; наступний recompute не повертає старий модельний текст. Періодичний recompute без інвалідації не переписує історичний час зведення. Після невдалого snapshot сервіс перевіряє готовність знову через 5 секунд; модельні відмови лишаються на 15-хвилинному backoff.
+
 `ufv_analyst` читає `core.analyst_items` і `core.analyst_rollups` із перевіркою прав без доступу до `raw.items`, авторизації чи `telegram_accounts`. Запис дозволений лише в результати/стан analyst. Зі старих `analysis_labels` роль може читати тільки run/item/version, не тексти. Права однаково задають `deploy/analyst_grants.py` і міграція. Модель не бачить URL, профілів авторів, акаунтів або Telegram-секретів; текст додатково проходить чинне маскування контактів.
 
 Кожний payload явно названий недовіреними даними. Промпт забороняє виконувати вбудовані інструкції. Вихід — суворий JSON із перевіркою exact quotes і ID; посилання слід брати зі сховища. Валідатор не доводить семантичну правильність висновку; точність і впевненість не калібровані.
@@ -52,7 +54,7 @@ Healthcheck перевіряє свіжий heartbeat (до 5 хвилин), н�
 
 ## Перевірка інкременту
 
-У `ufv_checks`: ролі, gate, аудит, synthetic RSS, HTTP mocks OpenAI-compatible/Anthropic, S1 upsert+dedup+parent version, відхилення невалідного JSON/цитат, S2 day/month, місяць при **відкликаному SELECT на analyst_items**, відкликання джерела приховує summary, NATS→mock→label, живий subprocess без ключа→heartbeat+rules summaries. Тестові credentials мають redacted repr. Без реальних LLM-запитів, без Telegram-авторизації, без production fixtures.
+У `ufv_checks`: ролі, gate, аудит, synthetic RSS, HTTP mocks OpenAI-compatible/Anthropic, S1 upsert+dedup+parent version, відхилення невалідного JSON/цитат, S2 day/month, місяць при **відкликаному SELECT на analyst_items**, відкликання джерела приховує summary, NATS→mock→label, живий subprocess без ключа→heartbeat+rules summaries. Окремо перевірено review → приховування day/month, dirty → жодного модельного виклику, recompute → старий текст не повернувся; інвалідація всередині HTTP → результат не записаний. **27 тестів пройдено.** Тестові credentials мають redacted repr. Без реальних LLM-запитів, без Telegram-авторизації, без production fixtures.
 
 Команди: `npm run typecheck`, `npm run build`; `UFV_TEST_ENV=/protected/ufv-checks.json python -m pytest tests/test_analyst.py tests/test_analyst_runtime.py tests/test_analysis_once.py -q`; `docker build -f deploy/Dockerfile.analyst -t ufv-analyst:night-check .`. Runtime-тести серіалізувати з іншими suites: спільна `ufv_checks` використовується їхніми reset fixtures.
 

@@ -85,6 +85,7 @@ def allowed_source(ai_runtime):
     owner.execute('delete from core.analyst_receipts where raw_item_id in(select id from raw.items where source_id=%s)',(source['id'],))
     owner.execute('delete from core.ai_summaries where workflow_id=%s',(workflow,))
     owner.execute('delete from core.analyst_summary_schedule where workflow_id=%s',(workflow,))
+    owner.execute('delete from core.review_decisions where mention_id in(select id from core.mentions where source_id in(select id from core.sources where workflow_id=%s))',(workflow,))
     owner.execute('delete from core.mentions where source_id in(select id from core.sources where workflow_id=%s)',(workflow,))
     owner.execute('delete from core.processing_receipts where raw_item_id in(select id from raw.items where source_id in(select id from core.sources where workflow_id=%s))',(workflow,))
     owner.execute('delete from raw.items where source_id in(select id from core.sources where workflow_id=%s)',(workflow,))
@@ -183,6 +184,43 @@ def test_api_admin_only_basis_audit_and_rss_rights(ai_runtime,allowed_source):
     assert admin.put(path,json={'llm_allowed':True,'llm_basis':'Synthetic allow basis'}).status_code==409
     status=admin.get('/api/admin/ai/status')
     assert status.status_code==200 and 'synthetic-test-value' not in status.text
+
+
+def test_summary_invalidation_and_partial_month_are_never_presented_as_complete(ai_runtime,allowed_source,mock_llm):
+    owner,db,_,_=ai_runtime;state,config=mock_llm
+    ident=add_item(owner,allowed_source)
+    owner.execute('select core.refresh_dashboard_rollups()')
+    provider=make_provider(config)
+    assert summarize_window(db,allowed_source['workflow_id'],'30d',provider,config)=='ai'
+    assert summarize_window(db,allowed_source['workflow_id'],'24h',provider,config)=='ai'
+    assert len(db.all('select id from core.current_ai_summaries where workflow_id=%s',(allowed_source['workflow_id'],)))==2
+    mid=owner.one('select id from core.mentions where raw_item_id=%s',(ident,))['id']
+    owner.execute("insert into core.review_decisions(mention_id,decision,raw_version,reviewed_by) values(%s,'rejected',1,'synthetic-analyst-test')",(mid,))
+    assert not db.all('select id from core.current_ai_summaries where workflow_id=%s',(allowed_source['workflow_id'],))
+    before=len(state['requests'])
+    assert summarize_window(db,allowed_source['workflow_id'],'30d',provider,config)=='rollup_pending'
+    assert len(state['requests'])==before
+    owner.execute('select core.refresh_dashboard_rollups()')
+    # Rebuilding must not revive a model narrative generated before the human review.
+    assert not db.all('select id from core.current_ai_summaries where workflow_id=%s',(allowed_source['workflow_id'],))
+    assert summarize_window(db,allowed_source['workflow_id'],'30d',provider,config)=='ai'
+    current=db.one('select body from core.current_ai_summaries where workflow_id=%s',(allowed_source['workflow_id'],))
+    assert current['body']['aggregate_facts']['accepted']==0
+
+
+def test_invalidation_during_model_request_discards_snapshot(ai_runtime,allowed_source,mock_llm):
+    owner,db,_,_=ai_runtime;_,config=mock_llm
+    ident=add_item(owner,allowed_source)
+    owner.execute('select core.refresh_dashboard_rollups()')
+    provider=make_provider(config)
+    class ChangedDuringRequest:
+        def complete_json(self,task,schema,payload):
+            output=provider.complete_json(task,schema,payload)
+            owner.execute("update raw.items set text='Оновлений синтетичний текст',version=version+1 where id=%s",(ident,))
+            owner.execute('select core.refresh_dashboard_rollups()')
+            return output
+    assert summarize_window(db,allowed_source['workflow_id'],'30d',ChangedDuringRequest(),config)=='input_changed'
+    assert not db.all('select id from core.ai_summaries where workflow_id=%s',(allowed_source['workflow_id'],))
 
 
 def test_live_null_process_has_heartbeat_and_nats(ai_runtime,allowed_source):

@@ -66,31 +66,49 @@ def summarize_by_rules(counts):
                             'Лише джерела з дозволом на AI; це не повне покриття телекому.']}
 
 
+class SnapshotReader:
+    def __init__(self,conn):
+        self.conn=conn
+
+    def all(self,query,params):
+        return self.conn.execute(query,params).fetchall()
+
+    def one(self,query,params):
+        return self.conn.execute(query,params).fetchone()
+
+
 def summarize_window(db, workflow_id, window, provider, config):
     end = datetime.now(timezone.utc)
     start = end - timedelta(days={'24h':1,'7d':7,'30d':30}[window])
-    if window == '30d':
-        kyiv=ZoneInfo('Europe/Kyiv')
-        start=datetime.combine(end.astimezone(kyiv).date()-timedelta(days=29),datetime.min.time(),tzinfo=kyiv)
-        counts = db.one('''select coalesce(sum(count),0)::int total,
-            coalesce(sum(count) filter(where decision='accepted'),0)::int accepted,
-            count(distinct source_id)::int sources,
-            coalesce(sum(negative_count) filter(where decision='accepted'),0)::int negative_count,
-            coalesce(array_agg(distinct source_id),'{}') source_ids
-            from core.analyst_rollups where workflow_id=%s and day>=%s and day<=%s''',
-            (workflow_id,start.date(),end.astimezone(kyiv).date()))
-    else:
-        counts = db.one('''select count(*)::int total,count(*) filter(where rule_decision='accepted')::int accepted,
-        count(distinct source_id)::int sources,count(*) filter(where published_at is null)::int undated
-        ,coalesce(array_agg(distinct source_id),'{}') source_ids
-        from core.analyst_items where workflow_id=%s and coalesce(published_at,fetched_at)>=%s
-        and coalesce(published_at,fetched_at)<%s''', (workflow_id,start,end))
-    source_ids = counts.pop('source_ids')
-    # Monthly summaries never read raw text, including evidence samples.
-    rows = [] if window == '30d' else db.all('''select id,version,text,kind from core.analyst_items where workflow_id=%s
-        and rule_decision='accepted' and published_at>=%s and published_at<%s
-        order by published_at desc,id desc limit 20''', (workflow_id,max(start,end-timedelta(days=7)),end))
-    items = [{'id': row['id'],'kind':row['kind'],'text':bounded_text(row['text'],2400)} for row in rows]
+    # One repeatable-read snapshot binds coverage, counts and evidence together.
+    with db.pool.connection() as conn:
+        conn.execute('set transaction isolation level repeatable read')
+        read = SnapshotReader(conn)
+        states = read.all('select * from core.analyst_rollup_state where workflow_id=%s order by source_id', (workflow_id,))
+        if window == '30d' and any(s['dirty'] or s['generated_at'] is None for s in states):
+            return 'rollup_pending'
+        if window == '30d':
+            kyiv=ZoneInfo('Europe/Kyiv')
+            start=datetime.combine(end.astimezone(kyiv).date()-timedelta(days=29),datetime.min.time(),tzinfo=kyiv)
+            counts = read.one('''select coalesce(sum(count),0)::int total,
+                coalesce(sum(count) filter(where decision='accepted'),0)::int accepted,
+                count(distinct source_id)::int sources,
+                coalesce(sum(negative_count) filter(where decision='accepted'),0)::int negative_count,
+                coalesce(array_agg(distinct source_id),'{}') source_ids
+                from core.analyst_rollups where workflow_id=%s and day>=%s and day<=%s''',
+                (workflow_id,start.date(),end.astimezone(kyiv).date()))
+        else:
+            counts = read.one('''select count(*)::int total,count(*) filter(where rule_decision='accepted')::int accepted,
+            count(distinct source_id)::int sources,count(*) filter(where published_at is null)::int undated
+            ,coalesce(array_agg(distinct source_id),'{}') source_ids
+            from core.analyst_items where workflow_id=%s and coalesce(published_at,fetched_at)>=%s
+            and coalesce(published_at,fetched_at)<%s''', (workflow_id,start,end))
+        source_ids = counts.pop('source_ids')
+        # Monthly summaries never read raw text, including evidence samples.
+        rows = [] if window == '30d' else read.all('''select id,version,text,kind,rule_decision from core.analyst_items where workflow_id=%s
+            and rule_decision='accepted' and published_at>=%s and published_at<%s
+            order by published_at desc,id desc limit 20''', (workflow_id,max(start,end-timedelta(days=7)),end))
+        items = [{'id': row['id'],'kind':row['kind'],'text':bounded_text(row['text'],2400)} for row in rows]
     body = summarize_by_rules(counts)
     mode, model = 'rules', 'rules-v2'
     if window == '30d' and counts['total'] and config.enabled and reserve_budget(db,config.max_items_per_hour):
@@ -116,12 +134,20 @@ negative_count — евристика правил, не виміряна мод
             mode,model = 'ai',config.model
     body['provenance'] = {'type':'daily_rollups' if window=='30d' else 'allowed_items',
                           'workflow_id':workflow_id,'window':window,'window_start':start.isoformat(),
-                          'window_end':end.isoformat(),'counts':counts,'evidence_sample':len(items)}
+                          'window_end':end.isoformat(),'counts':counts,'evidence_sample':len(items),
+                          'source_states':[{'source_id':s['source_id'],
+                              'generated_at':s['generated_at'].isoformat() if s['generated_at'] else None,
+                              'invalidated_at':s['invalidated_at'].isoformat() if s['invalidated_at'] else None} for s in states]}
     # Store all supplied versions, not only the quotes selected by the model.
-    versions = [{'id':row['id'],'version':row['version']} for row in rows]
+    versions = [{'id':row['id'],'version':row['version'],'rule_decision':row['rule_decision']} for row in rows]
+    current_states=db.all('select * from core.analyst_rollup_state where workflow_id=%s order by source_id',(workflow_id,))
+    if ({s['source_id']:s['invalidated_at'] for s in current_states} != {s['source_id']:s['invalidated_at'] for s in states}
+            or (window=='30d' and any(s['dirty'] or s['generated_at'] is None for s in current_states))):
+        return 'input_changed'
+    source_ids=[s['source_id'] for s in states]
     if versions:
-        current = db.all('select id,version from core.analyst_items where id=any(%s)', ([v['id'] for v in versions],))
-        if {r['id']:r['version'] for r in current} != {v['id']:v['version'] for v in versions}:
+        current = db.all('select id,version,rule_decision from core.analyst_items where id=any(%s)', ([v['id'] for v in versions],))
+        if {r['id']:(r['version'],r['rule_decision']) for r in current} != {v['id']:(v['version'],v['rule_decision']) for v in versions}:
             return 'input_changed'
     evidence_ids = sorted({e['id'] for o in body['observations'] for e in o['evidence']})
     db.execute('''insert into core.ai_summaries(workflow_id,"window",window_start,window_end,model,mode,body,evidence_ids,input_versions,source_ids)
