@@ -609,22 +609,11 @@ function addMsg(role,html){
   chatlog.appendChild(div);
   chatlog.scrollTop=chatlog.scrollHeight;
 }
-// Мовонезалежна (укр./рос./англ.) евристика: без словника не відрізнити "слово" від
-// вигаданого набору літер напевно, тож перевіряємо ознаки, спільні для реальних слів
-// у цих алфавітах — наявність голосних і відсутність довгих приголосних/однакових серій.
-const VOWELS="aeiouyаеєиіїоуюя";
-function looksLikeWord(tok){
-  const t=tok.toLowerCase();
-  if(t.length<2)return false;
-  if(![...t].some(c=>VOWELS.includes(c)))return false;
-  if(/(.)\1{3,}/.test(t))return false;
-  if(new RegExp(`[^${VOWELS}\\d\\s]{5,}`).test(t))return false;
-  return true;
-}
 function isInvalidQuery(text){
-  const tokens=text.trim().match(/[a-zа-яіїєґ']+/gi)||[];
-  if(tokens.length===0)return true;
-  return !tokens.some(looksLikeWord);
+  const t=text.trim();
+  if(t.length<2)return true;
+  if(!/[a-zа-яіїєґ]/i.test(t))return true;
+  return false;
 }
 function ask(text){
   if(!text.trim())return;
