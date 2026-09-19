@@ -7,6 +7,13 @@ import { TOPICS } from "../../lib/labels";
 import type { TabProps } from "./types";
 
 const SCOPES = { summary: "Зведення", posts: "Пости", full: "Пости й коментарі" };
+function selectionLabel(raw: string, label: (value: string) => string) {
+  try {
+    const values: unknown = JSON.parse(raw);
+    if (!Array.isArray(values) || values.some(value => typeof value !== "string" && typeof value !== "number")) return "Невідомо";
+    return values.length ? values.map(value => label(String(value))).join(", ") : "Усі";
+  } catch { return "Невідомо"; }
+}
 
 export function SharesTab({ state, workflowId, busy, run }: TabProps) {
   const [link, setLink] = useState("");
@@ -30,18 +37,20 @@ export function SharesTab({ state, workflowId, busy, run }: TabProps) {
     <div className="stack">
       <Card title="Посилання на dashboard"
         description="Кожне посилання — окрема гілка доступу до поточного workflow. Той, хто має посилання, може бачити дозволені дані до відкликання або завершення строку.">
-        {shares.length ? shares.map((s) => (
+        {shares.length ? shares.map((s) => {
+          const expired = s.expires_at * 1000 <= Date.now();
+          return (
           <div className="list-row" key={s.id}>
             <strong>{s.name}</strong>
             <Badge tone="secondary">{SCOPES[s.scope] ?? s.scope}</Badge>
-            <Badge tone={s.revoked ? "secondary" : "success"} dot>{s.revoked ? "Відкликано" : "Активне"}</Badge>
-            <span className="time">До {formatDateTime(s.expires_at)} · Канали: {s.channel_ids} · Теми: {s.topics}</span>
-            {!s.revoked && (
+            <Badge tone={s.revoked || expired ? "secondary" : "success"} dot>{s.revoked ? "Відкликано" : expired ? "Строк минув" : "Активне"}</Badge>
+            <span className="time">До {formatDateTime(s.expires_at)} · Канали: {selectionLabel(s.channel_ids, id => { const channel = state.channels.find(c => String(c.id) === id); return channel ? `@${channel.username}` : `Канал #${id}`; })} · Теми: {selectionLabel(s.topics, topic => TOPICS[topic] || "Інша тема")}</span>
+            {!s.revoked && !expired && (
               <button type="button" className="btn btn-destructive btn-sm spacer" disabled={busy}
                 onClick={() => run(async () => { await send(`/admin/shares/${s.id}`, "DELETE"); return "Доступ відкликано, активні сеанси за посиланням завершено."; })}>Відкликати доступ</button>
             )}
           </div>
-        )) : <p className="hint">Посилань ще немає.</p>}
+        ); }) : <p className="hint">Посилань ще немає.</p>}
       </Card>
 
       {link && (

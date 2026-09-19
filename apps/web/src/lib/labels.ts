@@ -19,11 +19,15 @@ export const ITEM_STATES: Record<string, { label: string; tone: Tone }> = {
   deleted: { label: "Видалено у джерелі", tone: "danger" },
 };
 
-// Стани, які пишуть API та collector; невідоме значення показуємо як є.
+// Стани, які пишуть API та collector; технічний код лишається у title значка.
 const RUNTIME: Record<string, { label: string; tone: Tone }> = {
   online: { label: "Підключено", tone: "success" },
+  connecting: { label: "Підключення", tone: "info" },
+  unauthorized: { label: "Потрібна нова сесія", tone: "warning" },
+  stopped: { label: "Зупинено", tone: "secondary" },
   watching: { label: "Збирається", tone: "success" },
   pending: { label: "Очікує", tone: "neutral" },
+  resolve: { label: "Пошук обговорення", tone: "neutral" },
   disabled: { label: "Вимкнено", tone: "secondary" },
   deleted: { label: "Видалено", tone: "secondary" },
   flood_wait: { label: "FloodWait", tone: "warning" },
@@ -32,4 +36,4 @@ const RUNTIME: Record<string, { label: string; tone: Tone }> = {
   error: { label: "Помилка", tone: "danger" },
 };
 
-export const runtimeStatus = (status: string) => RUNTIME[status] ?? { label: status, tone: "neutral" as Tone };
+export const runtimeStatus = (status: string) => RUNTIME[status] ?? { label: "Стан невідомий", tone: "neutral" as Tone };

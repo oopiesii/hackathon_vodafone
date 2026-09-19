@@ -19,7 +19,7 @@ const server = createServer(async (req,res) => {
   if(path==='/api/auth/get-session') data={session:{id:'synthetic',userId:'test',expiresAt:'2099-01-01T00:00:00Z'},user};
   if(path==='/api/me') data={user,permissions:scenario==='viewer'?{incident:['view']}:{incident:['view','edit'],collector:['read','manage'],user:['list','create']}};
   if(path==='/api/admin/refresh') data={requests:['refresh','stale-refresh'].includes(scenario)?[{id:'1',workflow_id:'1',service:'telegram',status:'running',stale:scenario==='stale-refresh',collector_online:scenario!=='stale-refresh',requested_at:dashboard.end,started_at:dashboard.end,completed_at:null,detail:scenario==='stale-refresh'?'Немає свіжого сигналу збирача. Запит залишається в черзі; оновлення не підтверджено.':'Синтетична перевірка: збирач прийняв запит.'},{id:'2',workflow_id:'1',service:'rss',status:'deferred',requested_at:dashboard.end,started_at:dashboard.end,completed_at:dashboard.end,detail:'Очікування лімітів джерела збережено.'}]:[]};
-  if(path==='/api/admin/state') data={telegram_enabled:true,accounts:[{id:1,label:'Демо',credentials_ready:false,status:'waiting'}],channels:[],services:[],threads:[],audit:[],memberships:[],shares:[],workflows:[{id:1,name:'Синтетичний workflow',enabled:true,comments_enabled:true,filter_spam:true,poll_seconds:30,history_days:7}]};
+  if(path==='/api/admin/state') data={telegram_enabled:true,accounts:[{id:1,label:'Демо',credentials_ready:false,status:'waiting'}],channels:[],services:[],threads:[{id:1,channel_id:1,post_id:1,comment_cursor:0,status:'resolve',last_error:null,last_polled_at:null}],audit:[],memberships:[],shares:[{id:1,workflow_id:1,name:'Синтетичне прострочене посилання',scope:'posts',channel_ids:'[]',topics:'["network"]',expires_at:1,revoked:false}],workflows:[{id:1,name:'Синтетичний workflow',enabled:true,comments_enabled:true,filter_spam:true,poll_seconds:30,history_days:7}]};
   if(path==='/api/admin/rss') data={enabled:true,items:[],service:null,workflows:[{id:'1',name:'Демонстрація',enabled:true}]};
   if(path==='/api/admin/ai/status') data={heartbeat_at:scenario==='stale-ai'?'2020-01-01T00:00:00Z':new Date().toISOString(),mode:scenario==='stale-ai'?'active':'waiting_key',model:null,last_error:null,limit_per_hour:60,items_last_hour:0,sources:[{id:'1',kind:'telegram',title:'Синтетичний Telegram',llm_allowed:false,llm_basis:null,rights_status:null},{id:'2',kind:'rss',title:'Дозволений RSS',llm_allowed:true,llm_basis:'Синтетична підстава',rights_status:'allowed'},{id:'3',kind:'rss',title:'Заблокований RSS',llm_allowed:false,llm_basis:null,rights_status:'blocked'}]};
   if(path==='/api/workflows') data={items:[{id:'1',name:'Vodafone та український телеком'}]};
@@ -129,6 +129,14 @@ for(const scenario of scenarios) for(const width of [1440,768,390]) for(const th
   const hidden=await page.locator('.tabs').evaluate(el=>{const a=el.getBoundingClientRect(),b=el.querySelector('[aria-pressed="true"]').getBoundingClientRect();return b.left<a.left-1||b.right>a.right+1;});
   if(hidden)issues.push('selected mobile tab offscreen');
   await page.screenshot({path:join(out,`tabs-${width}-${theme}.png`),fullPage:true});
+  await page.getByRole('button',{name:'Доступи',exact:true}).click();
+  await page.getByText('Строк минув',{exact:true}).waitFor();
+  if(await page.getByRole('button',{name:'Відкликати доступ',exact:true}).count())issues.push('expired share has active revoke control');
+  if(!(await page.locator('.list-row').textContent()).includes('Канали: Усі · Теми: Мережа й покриття'))issues.push('share scope raw values');
+  await page.screenshot({path:join(out,`shares-${width}-${theme}.png`),fullPage:true});
+  await page.getByRole('button',{name:'Стан',exact:true}).click();
+  await page.getByText('Пошук обговорення',{exact:true}).waitFor();
+  await page.screenshot({path:join(out,`operations-${width}-${theme}.png`),fullPage:true});
  }
  if(scenario==='stale-refresh' && !await page.getByRole('button',{name:'Перевірити оновлення',exact:true}).isEnabled())issues.push('stale refresh locks control');
  reports.push({scenario,width,theme,issues:[...issues,...errors]});
