@@ -62,6 +62,8 @@ def main():
                     page = context.new_page()
                     errors = []
                     page.on('pageerror', lambda e: errors.append(type(e).__name__))
+                    page.on('response', lambda response: errors.append('server error ' + str(response.status))
+                            if response.status >= 500 and response.url.startswith(ORIGIN + '/api/') else None)
                     try:
                         response = page.goto(ORIGIN + path, wait_until='networkidle', timeout=45000)
                         if not response or response.status != 200:
@@ -69,8 +71,10 @@ def main():
                         page.evaluate('document.fonts.ready')
                         issues = page.evaluate(CHECK)
                         height = page.evaluate('document.documentElement.scrollHeight')
-                        page.screenshot(path=str(OUT / f'{name}-{width}-{theme}.png'), full_page=height <= 9000)
-                        if height > 9000:
+                        # Very tall images become unreadable in the review viewer.
+                        # Keep top/middle/bottom at real viewport size for long lists.
+                        page.screenshot(path=str(OUT / f'{name}-{width}-{theme}.png'), full_page=height <= 3000)
+                        if height > 3000:
                             for position in ['middle', 'bottom']:
                                 page.evaluate('(y)=>window.scrollTo(0,y)', height // 2 if position == 'middle' else height)
                                 page.screenshot(path=str(OUT / f'{name}-{position}-{width}-{theme}.png'))
