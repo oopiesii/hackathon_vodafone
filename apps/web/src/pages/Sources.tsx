@@ -1,3 +1,5 @@
+import { AiSources } from "../components/AiSources";
+import { SocialSlot } from "../components/SocialSlot";
 import { RssCard } from './RssSources';
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Send } from "lucide-react";
@@ -54,6 +56,9 @@ export function Sources() {
             </div>
           </Card>
           <RssCard />
+          <AiSources />
+          <SocialSlot platform="Threads" />
+          <SocialSlot platform="X" />
         </div>
       )}
       <Card title="Що потрапляє до платформи" footer={<Link className="btn btn-outline btn-sm" to="/inbox">Відкрити весь вхід</Link>}>

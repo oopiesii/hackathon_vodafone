@@ -1,0 +1,16 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"urn:ufv:event:network.site.status:v1",
+  "title":"Стан майданчика мережі: контракт інтеграції, не підключені дані",
+  "type":"object","additionalProperties":false,
+  "required":["v","event_id","site_id","region","status","observed_at","is_demo"],
+  "properties":{
+    "v":{"const":1},"event_id":{"type":"string","minLength":1,"maxLength":128},
+    "site_id":{"type":"string","minLength":1,"maxLength":128},
+    "region":{"type":"string","minLength":1,"maxLength":100},
+    "status":{"enum":["available","degraded","unavailable","unknown"]},
+    "observed_at":{"type":"string","format":"date-time"},
+    "reason":{"type":"string","maxLength":500},
+    "is_demo":{"type":"boolean"}
+  }
+}

@@ -1,0 +1,29 @@
+import { useRef, useState } from "react";
+import { Calculator, ExternalLink } from "lucide-react";
+import { Badge, Card, Dialog, Field } from "../ui";
+const SOURCE = "https://interfax.com.ua/news/telecom/1196790.html";
+const revenuePerHour = 14_900_000_000 / (181 * 24);
+const money = (value: number) => value.toLocaleString("uk-UA", { maximumFractionDigits: 0 }) + " грн";
+const valid = (value: string, max: number) => value.trim() !== "" && Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= max;
+export function Impact() {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [hours, setHours] = useState("1"), [share, setShare] = useState("10"), [churn, setChurn] = useState("1000"), [work, setWork] = useState("1");
+  const loss = valid(hours, 240) && valid(share, 100) ? revenuePerHour * Number(hours) * Number(share) / 100 : null;
+  return <>
+    <Card className="span-4" title="Вплив на Vodafone" actions={<Badge>Припущення</Badge>} footer={<button className="btn btn-outline btn-sm" type="button" onClick={() => dialog.current?.showModal()}><Calculator size={14} aria-hidden="true" />Розрахувати сценарій</button>}>
+      <div className="impact-teaser"><span>Година виручки компанії</span><strong>≈ 3,4 млн грн</strong><small>Орієнтир масштабу · I півріччя 2026</small><a href={SOURCE} target="_blank" rel="noopener noreferrer">Джерело · 28.08.2026<ExternalLink size={12} aria-hidden="true" /></a></div>
+    </Card>
+    <Dialog ref={dialog} title="Оцінка впливу · припущення" titleId="impact-title">
+      <div className="stack"><p className="hint">Сценарний розрахунок. Фактичні тривалість збою, частка абонентів і втрати невідомі.</p>
+        <div className="impact-fields"><Field label="Тривалість, год"><input id="impact-hours" type="number" min="0" max="240" step="0.5" value={hours} onChange={e => setHours(e.target.value)} /></Field><Field label="Частка абонентів, %"><input id="impact-share" type="number" min="0" max="100" value={share} onChange={e => setShare(e.target.value)} /></Field></div>
+        <div className="impact-result"><span>Оцінка недоотриманої виручки</span><output htmlFor="impact-hours impact-share" aria-live="polite">{loss === null ? "Вкажіть 0–240 год і 0–100%" : "≈ " + money(loss)}</output></div>
+        <details><summary>Формула й спосіб перевірки</summary><p className="hint">14,9 млрд грн ÷ 4 344 год × тривалість × частка абонентів. Припускаємо пропорційне зменшення виручки під час повного простою; це не бухгалтерський збиток. Передплата, компенсації й відкладене споживання можуть змінити результат. Перевірка: зіставити з внутрішніми даними трафіку, білінгу та інцидентів.</p></details>
+        <div className="impact-fields"><Field label="Припущений відтік, абонентів"><input id="impact-churn" type="number" min="0" max="15100000" value={churn} onChange={e => setChurn(e.target.value)} /></Field><div className="impact-secondary"><span>Виручка за рік під ризиком</span><output htmlFor="impact-churn">{valid(churn, 15100000) ? "≈ " + money(Number(churn) * 154 * 12) : "Вкажіть кількість 0–15,1 млн"}</output></div></div>
+        <p className="hint">Припущення: середній ARPU 154 грн/міс. зберігається 12 місяців. Реальний відтік невідомий; потрібні дані MNP та утримання.</p>
+        <div className="impact-fields"><Field label="Реагування, людино-годин"><input id="impact-work" type="number" min="0" max="10000" step="0.5" value={work} onChange={e => setWork(e.target.value)} /></Field><div className="impact-secondary"><span>Вартість реагування</span><output htmlFor="impact-work">{valid(work, 10000) ? "≈ $" + (Number(work) * 15).toLocaleString("uk-UA") : "Вкажіть 0–10 000 год"}</output></div></div>
+        <p className="hint">Ставка $15 за людино-годину — орієнтир ментора, не виміряні витрати. Для перевірки підставте фактичні години й внутрішню ставку команди.</p>
+        <a className="btn btn-ghost btn-sm" href={SOURCE} target="_blank" rel="noopener noreferrer">Фінансові показники · Інтерфакс-Україна, 28.08.2026<ExternalLink size={14} aria-hidden="true" /></a>
+      </div>
+    </Dialog>
+  </>;
+}

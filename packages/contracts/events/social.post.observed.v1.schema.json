@@ -1,0 +1,17 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"urn:ufv:event:social.post.observed:v1",
+  "title":"Спостережений допис: контракт майбутнього Threads/X collector",
+  "type":"object","additionalProperties":false,
+  "required":["v","source_id","platform","post_id","url","text","observed_at","is_demo"],
+  "properties":{
+    "v":{"const":1},"source_id":{"type":"string","minLength":1},
+    "platform":{"enum":["threads","x"]},"post_id":{"type":"string","minLength":1,"maxLength":200},
+    "url":{"type":"string","format":"uri","pattern":"^https://"},
+    "text":{"type":"string","maxLength":65536},
+    "published_at":{"type":["string","null"],"format":"date-time"},
+    "observed_at":{"type":"string","format":"date-time"},
+    "metrics":{"type":"object","additionalProperties":false,"properties":{"views":{"type":["integer","null"],"minimum":0},"replies":{"type":["integer","null"],"minimum":0},"reposts":{"type":["integer","null"],"minimum":0}}},
+    "is_demo":{"type":"boolean"}
+  }
+}

@@ -15,7 +15,7 @@ export function Metrics({ data }: { data: DashboardResponse }) {
   return <div className="dashboard-metrics">{(Object.keys(METRIC_LABELS) as (keyof typeof METRIC_LABELS)[]).map(key => {
     const metric = data.metrics[key];
     if (!metric) return null;
-    return <Link to={metric.href} className="metric-tile" key={key} title={metric.note}>
+    return <Link to={metric.href} className="metric-tile" key={key} title={`${metric.value === null ? "Невідомо" : count(metric.value)} · ${metric.note}`}>
       <span className="metric-label">{METRIC_LABELS[key]}</span>
       <span className="metric-main"><strong>{metricValue(metric)}</strong><Spark values={metric.series} /></span>
       <span className="metric-note">{metric.value === null ? "Недостатньо вимірювань" : key === "negative_share" ? "Евристика за реакціями" : key === "negative_reach" ? "Перегляди, не унікальні люди" : key === "critical" ? "За правилами, не прогноз" : key === "collection_lag" ? `Медіана · ${count(metric.measured)} вимірювань` : "Переглянути матеріали"}</span>
@@ -26,6 +26,6 @@ export function Metrics({ data }: { data: DashboardResponse }) {
 export function MetricsTable({ data }: { data: DashboardResponse }) {
   return <div className="tablewrap"><table><thead><tr><th>Показник</th><th>Значення</th><th>Методика</th><th>Ряд значень</th></tr></thead><tbody>{(Object.keys(METRIC_LABELS) as (keyof typeof METRIC_LABELS)[]).map(key => {
     const metric = data.metrics[key];
-    return metric && <tr key={key}><td><Link to={metric.href}>{METRIC_LABELS[key]}</Link></td><td>{metricValue(metric)}</td><td>{metric.note}</td><td>{metric.series.length ? metric.series.map(count).join("; ") : "Немає ряду"}</td></tr>;
+    return metric && <tr key={key}><td><Link to={metric.href}>{METRIC_LABELS[key]}</Link></td><td>{metric.value === null ? "Невідомо" : count(metric.value)} {metric.unit === "seconds" ? "с" : metric.unit === "percent" ? "%" : metric.unit}</td><td>{metric.note}</td><td>{metric.series.length ? metric.series.map(count).join("; ") : "Немає ряду"}</td></tr>;
   })}</tbody></table></div>;
 }

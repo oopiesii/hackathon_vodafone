@@ -3,11 +3,11 @@ const end = '2026-09-19T20:00:00.000Z';
 const start = '2026-09-18T20:00:00.000Z';
 const href = '/feed?workflow_id=1&decision=visible&from=' + start + '&until=' + end;
 const series = [2, 3, 5, 1, 3, 2, 4, 6, 12, 15, 10, 8];
-const metric = (value, unit = 'count', note = 'Тестовий підрахунок матеріалів') => ({ value, unit, href, series, measured: 48, note });
+const metric = (value, unit = 'матеріалів', note = 'Тестовий підрахунок матеріалів') => ({ value, unit, href, series, measured: 48, note });
 export const dashboard = {
  version: 1, workflow_id: '1', window: '24h', start, end, timezone: 'Europe/Kyiv', generated_at: end, aggregated: false, visibility: 'accepted_review',
  brand_status: { level: 'attention', title: 'Перебої мобільного інтернету у Львові', reason: 'Синтетична перевірка: тема мережі у двох джерелах', negative_delta_pp: null, href },
- metrics: { mentions: metric(124), critical: metric(0), negative_share: metric(28.4, 'percent'), negative_reach: metric(42100, 'views'), collection_lag: metric(83, 'seconds'), noise: {...metric(1234), href:'/inbox?workflow_id=1&state=rejected'} },
+ metrics: { mentions: metric(124), critical: metric(0), negative_share: metric(28.4, 'percent'), negative_reach: metric(42100, 'переглядів'), collection_lag: metric(83, 'seconds'), noise: {...metric(1234), href:'/inbox?workflow_id=1&state=rejected'} },
  counts: { accepted: 96, review: 28, collected: 1380, rejected: 1234, pending: 22 },
  hourly: Array.from({length:24}, (_, i) => { const count = series[i % 12]; return { at: new Date(Date.parse(start) + i * 3600000).toISOString(), count, topics: { network: Math.floor(count * .6), billing: count - Math.floor(count * .6) }, href }; }),
  topics: [{topic:'network',count:76,href},{topic:'billing',count:48,href}],

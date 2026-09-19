@@ -10,13 +10,18 @@ const root = resolve('apps/web/dist'), out = resolve(process.env.UFV_SHOTS || 'a
 await mkdir(out, {recursive:true});
 const csp = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'";
 const mime = {'.html':'text/html','.css':'text/css','.js':'text/javascript','.woff2':'font/woff2'};
-const user = {id:'test',email:'demo@example.test',name:'Тестова демонстрація',role:'admin'};
+const adminUser = {id:'test',email:'demo@example.test',name:'Тестова демонстрація',role:'admin'};
 const server = createServer(async (req,res) => {
  const url=new URL(req.url,'http://localhost'), path=url.pathname, scenario=req.headers['x-scenario']||'populated';
  if(path.startsWith('/api/')) {
   let data;
+  const user={...adminUser,role:scenario==='viewer'?'viewer':'admin'};
   if(path==='/api/auth/get-session') data={session:{id:'synthetic',userId:'test',expiresAt:'2099-01-01T00:00:00Z'},user};
-  if(path==='/api/me') data={user,permissions:{incident:['view','edit'],collector:['read','manage'],user:['list','create']}};
+  if(path==='/api/me') data={user,permissions:scenario==='viewer'?{incident:['view']}:{incident:['view','edit'],collector:['read','manage'],user:['list','create']}};
+  if(path==='/api/admin/refresh') data={requests:scenario==='refresh'?[{id:'1',workflow_id:'1',service:'telegram',status:'running',requested_at:dashboard.end,started_at:dashboard.end,completed_at:null,detail:'Синтетична перевірка: збирач прийняв запит.'},{id:'2',workflow_id:'1',service:'rss',status:'deferred',requested_at:dashboard.end,started_at:dashboard.end,completed_at:dashboard.end,detail:'Очікування лімітів джерела збережено.'}]:[]};
+  if(path==='/api/admin/state') data={telegram_enabled:true,accounts:[{id:1,label:'Демо',credentials_ready:false,status:'waiting'}],channels:[],services:[]};
+  if(path==='/api/admin/rss') data={enabled:true,items:[],service:null,workflows:[{id:'1',name:'Демонстрація',enabled:true}]};
+  if(path==='/api/admin/ai/status') data={heartbeat_at:dashboard.end,mode:'waiting_key',model:null,last_error:null,limit_per_hour:60,items_last_hour:0,sources:[{id:'1',kind:'telegram',title:'Синтетичний Telegram',llm_allowed:false,llm_basis:null,rights_status:null},{id:'2',kind:'rss',title:'Дозволений RSS',llm_allowed:true,llm_basis:'Синтетична підстава',rights_status:'allowed'},{id:'3',kind:'rss',title:'Заблокований RSS',llm_allowed:false,llm_basis:null,rights_status:'blocked'}]};
   if(path==='/api/workflows') data={items:[{id:'1',name:'Vodafone та український телеком'}]};
   const item={id:'1',source_kind:'telegram',text:'Синтетичний приклад: перевірка матеріалу Vodafone.',summary:'',source_url:'https://example.test/evidence',published_at:dashboard.end,fetched_at:dashboard.end,processed_at:dashboard.end,edited_at:null,kind:'post',topic:'network',channel_title:'Синтетичне джерело',reason:'Тестовий матеріал',duplicate_of:null,context_id:null,manual_decision:null};
   if(path==='/api/feed') data={items:[item],total:{count:1,last_processed_at:dashboard.end},kinds:[{kind:'post',count:1}],topics:[{topic:'network',count:1}],next_before:null,summary_only:false,telegram_enabled:true};
@@ -26,7 +31,8 @@ const server = createServer(async (req,res) => {
    if(scenario==='error'){res.writeHead(503,{'content-type':'application/json'});res.end(JSON.stringify({error:'unavailable'}));return;}
    if(scenario==='loading'){await new Promise(r=>setTimeout(r,5000));}
    data=structuredClone(dashboard);
-   if(scenario==='empty'){data.signals=[];data.sources=[];data.spread=[];data.competitors=[];data.counts={accepted:0,review:0,collected:85,rejected:85,pending:0};for(const m of Object.values(data.metrics)){m.value=m.unit==='count'?0:null;m.series=[];m.measured=0;}data.reactions={...data.reactions,negative:0,ironic:0,sad:0,positive:0,total:0,observed_items:0};data.hourly=data.hourly.map(h=>({...h,count:0,topics:{}}));data.ai.summary="За правилами: тематичних матеріалів немає; зібрано 85, відсіяно 85.";data.brand_status={...data.brand_status,level:'unknown',title:'Недостатньо тематичних матеріалів'};}
+   if(scenario==='empty'){data.signals=[];data.sources=[];data.spread=[];data.competitors=[];data.counts={accepted:0,review:0,collected:85,rejected:85,pending:0};for(const m of Object.values(data.metrics)){m.value=m.unit==='матеріалів'?0:null;m.series=[];m.measured=0;}data.reactions={...data.reactions,negative:0,ironic:0,sad:0,positive:0,total:0,observed_items:0};data.hourly=data.hourly.map(h=>({...h,count:0,topics:{}}));data.ai.summary="За правилами: тематичних матеріалів немає; зібрано 85, відсіяно 85.";data.brand_status={...data.brand_status,level:'unknown',title:'Недостатньо тематичних матеріалів'};}
+   if(scenario==='calculating'){data.aggregation={complete:false,generated_at:null,note:'Перераховуємо агрегати після оновлення матеріалів. Неповні лічильники приховано.'};data.aggregated=true;data.signals=[];for(const m of Object.values(data.metrics)){m.value=null;m.series=[];}data.brand_status.level='unknown';data.brand_status.reason='Очікуємо повного зрізу';data.ai.summary='Перерахунок агрегатів триває.';}
    if(scenario==='long'){data.brand_status.title='Надзвичайно довга назва питання для перевірки перенесення рядків та збереження всіх змістовних слів у вузькій картці';data.sources[0].title='Надзвичайнодовганазваджерелабезпробілів'.repeat(4);data.signals[0].title=data.brand_status.title;data.metrics.mentions.value=10000;data.metrics.negative_reach.value=1258901234;}
    if(scenario==='disabled') data.freshness.forEach(s=>s.enabled=false);
    if(scenario==='viewer'){data.visibility='accepted';delete data.metrics.noise;data.counts={accepted:96};}
@@ -40,7 +46,7 @@ const server = createServer(async (req,res) => {
 await new Promise(r=>server.once('listening',r));
 const browser = await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
 const reports=[];
-const scenarios=process.argv.includes('--states')?['empty','error','loading','long','disabled','viewer']:['populated'];
+const scenarios=process.env.UFV_SCENARIO?[process.env.UFV_SCENARIO]:process.argv.includes('--states')?['empty','error','loading','long','disabled','viewer','calculating','refresh']:['populated'];
 for(const scenario of scenarios) for(const width of [1440,768,390]) for(const theme of ['light','dark']){
  const context=await browser.newContext({viewport:{width,height:900},colorScheme:theme,locale:'uk-UA',timezoneId:'Europe/Kyiv',extraHTTPHeaders:{'x-scenario':scenario}});
  const page=await context.newPage(), errors=[];
@@ -48,6 +54,7 @@ for(const scenario of scenarios) for(const width of [1440,768,390]) for(const th
  await page.goto(`http://127.0.0.1:${server.address().port}/`,{waitUntil:'domcontentloaded'});
  if(scenario==='loading') await page.getByText('Збираємо показники').waitFor(); else if(scenario==='error') await page.getByText('Не вдалося оновити дашборд.').waitFor(); else await page.getByRole('link',{name:/Перевірити докази/}).waitFor();
  await page.evaluate(()=>document.fonts.ready);
+ if(scenario==='refresh') await page.getByText('Перебіг збору',{exact:true}).click();
  const issues=await page.evaluate(()=>{
   const result=[], styles=getComputedStyle(document.documentElement), scale=new Set(['xs','sm','base','md','lg','xl','2xl'].map(s=>parseFloat(styles.getPropertyValue('--f-'+s))));
   const vw=document.documentElement.clientWidth;
@@ -62,6 +69,25 @@ for(const scenario of scenarios) for(const width of [1440,768,390]) for(const th
   }return [...new Set(result)];
  });
  await page.screenshot({path:join(out,`${scenario}-${width}-${theme}.png`),fullPage:true});
+ if(scenario==='populated'&&process.argv.includes('--slots')) {
+  await page.getByRole('button',{name:'Розрахувати сценарій'}).click();
+  await page.getByLabel('Тривалість, год',{exact:true}).fill('2');
+  await page.getByLabel('Частка абонентів, %',{exact:true}).fill('50');
+  if(!(await page.locator('.impact-result output').textContent()).replace(/\s/g,'').includes('3430018')) issues.push('calculator arithmetic');
+  await page.screenshot({path:join(out,`impact-${width}-${theme}.png`),fullPage:false});
+  await page.getByLabel('Тривалість, год',{exact:true}).fill('');
+  if(!(await page.locator('.impact-result output').textContent()).includes('Вкажіть')) issues.push('calculator invalid input');
+  await page.getByRole('button',{name:'Закрити',exact:true}).click();
+  await page.getByRole('button',{name:'Регіони та вишки'}).click();
+  await page.locator('dialog[open] .slot-row').first().click();
+  await page.locator('dialog[open] .slot-row').first().click();
+  await page.getByRole('heading',{name:/Демо · DEMO/}).waitFor();
+  await page.screenshot({path:join(out,`network-${width}-${theme}.png`),fullPage:false});
+  await page.getByRole('button',{name:'До вишок регіону'}).click();
+  await page.getByRole('button',{name:'До регіонів'}).click();
+  if(await page.locator('dialog[open] .slot-row').count()!==3)issues.push('network back lost');
+  await page.getByRole('button',{name:'Закрити',exact:true}).click();
+ }
  if(scenario==='populated'&&process.argv.includes('--flow')) {
   await page.getByRole('button',{name:'7 днів',exact:true}).click();
   await page.waitForResponse(r=>r.url().includes('/api/dashboard?')&&r.url().includes('window=7d'));
@@ -79,9 +105,21 @@ for(const scenario of scenarios) for(const width of [1440,768,390]) for(const th
   if(new URL(page.url()).searchParams.get('window')!=='7d')issues.push('back window lost');
  }
 
+ if(scenario==='populated'&&process.argv.includes('--slots')) {
+  await page.goto(`http://127.0.0.1:${server.address().port}/sources`);
+  await page.getByRole('heading',{name:'AI-аналітик',exact:true}).waitFor();
+  await page.getByText('Дозволи джерел · 1 увімкнено').click();
+  if(!await page.getByRole('switch',{name:'AI: Заблокований RSS',exact:true}).isDisabled())issues.push('blocked source enabled in UI');
+  await page.getByRole('switch',{name:'AI: Синтетичний Telegram',exact:true}).click();
+  if(!await page.getByRole('button',{name:'Зберегти дозвіл',exact:true}).isDisabled())issues.push('AI basis not required');
+  await page.getByRole('button',{name:'Закрити',exact:true}).click();
+  if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1))issues.push('sources overflow');
+  await page.evaluate(()=>window.scrollTo(0,0));
+  await page.screenshot({path:join(out,`sources-${width}-${theme}.png`),fullPage:true});
+ }
  reports.push({scenario,width,theme,issues:[...issues,...errors]});
  console.log(scenario,width,theme,JSON.stringify([...issues,...errors]));
  await context.close();
 }
-await browser.close();server.close();await writeFile(join(out,'report.json'),JSON.stringify(reports,null,2));
+await browser.close();server.close();await writeFile(join(out,`report-${process.env.UFV_SCENARIO || (process.argv.includes('--states')?'states':process.argv.includes('--slots')?'slots':'base')}.json`),JSON.stringify(reports,null,2));
 if(reports.some(r=>r.issues.length)) process.exitCode=1;
