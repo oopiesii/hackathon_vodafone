@@ -108,6 +108,7 @@ try:
                 page.get_by_role('button',name='Темна тема',exact=True).click()
             for width in [1440,768,390,320]:
                 page.set_viewport_size({'width':width,'height':1000});assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),(theme,width)
+            page.evaluate('window.scrollTo(0,0)')
             page.screenshot(path=f'/tmp/ufv-curated-{theme}.png',full_page=True)
         page.get_by_role('link',name='Vodafone: згадки за 7 днів',exact=False).click()
         expect(page.get_by_text('TEST semantic summary',exact=False)).to_be_visible()
