@@ -144,3 +144,21 @@ def test_dashboard_watch_latency_unknown_dates_and_spread(prepared):
     data=admin.get('/api/dashboard').json()
     assert data['metrics']['mentions']['value']==5
     assert data['metrics']['collection_lag']['measured']==4
+
+
+def test_month_source_move_never_leaves_old_workflow_aggregates(prepared):
+    db,admin,cfg,s,_=prepared
+    post(db,s,10,'Vodafone інтернет: synthetic transfer proof',views=70)
+    other=db.one("insert into core.workflows(name) values('Other synthetic scope') returning id")['id']
+    db.execute('select core.refresh_dashboard_rollups()')
+    assert admin.get('/api/dashboard?window=30d').json()['metrics']['mentions']['value']==1
+    # This is the same source update supported by the server-local import CLI.
+    db.execute('update core.sources set workflow_id=%s where id=%s',(other,s['id']))
+    old=admin.get('/api/dashboard?window=30d').json()
+    new=admin.get(f'/api/dashboard?workflow_id={other}&window=30d').json()
+    assert old['metrics']['mentions']['value']==0
+    assert new['metrics']['mentions']['value'] is None and not new['aggregation']['complete']
+    assert db.one('select count(*) n from core.daily_rollups where source_id=%s',(s['id'],))['n']==0
+    db.execute('select core.refresh_dashboard_rollups()')
+    assert admin.get(f'/api/dashboard?workflow_id={other}&window=30d').json()['metrics']['mentions']['value']==1
+    assert admin.get('/api/dashboard?window=30d').json()['metrics']['mentions']['value']==0

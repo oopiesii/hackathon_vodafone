@@ -77,7 +77,7 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
   window==='30d'?query(`select
     (select row_to_json(c) from core.dashboard_rollup_coverage c where c.workflow_id=$1) coverage,
     coalesce(jsonb_agg(to_jsonb(r)||jsonb_build_object('day_key',r.day::text,'title',s.title,'external_id',s.external_id) order by r.day),'[]') rollups
-    from core.daily_rollups r join core.sources s on s.id=r.source_id
+    from core.daily_rollups r join core.sources s on s.id=r.source_id and s.workflow_id=r.workflow_id
     join core.dashboard_rollup_state st on st.source_id=r.source_id and not st.dirty
     where r.workflow_id=$1 and r.day>=($2::timestamptz at time zone 'Europe/Kyiv')::date
     ${review?'':"and r.decision='accepted'"}`, [workflow,iso(start)]):Promise.resolve([]),
