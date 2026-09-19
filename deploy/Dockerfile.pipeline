@@ -1,0 +1,9 @@
+FROM python:3.13-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app/services
+WORKDIR /app
+COPY services/collector-telegram/requirements.txt /app/services/collector-telegram/requirements.txt
+COPY services/collector-rss/requirements.txt /app/services/collector-rss/requirements.txt
+RUN pip install --no-cache-dir -r services/collector-rss/requirements.txt && useradd --uid 10001 --create-home pipeline
+COPY services/pipeline /app/services/pipeline
+USER pipeline
+CMD ["python", "-m", "pipeline.telegram"]

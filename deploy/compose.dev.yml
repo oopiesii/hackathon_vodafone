@@ -1,0 +1,27 @@
+# Інфраструктура для локальної розробки: docker compose -f deploy/compose.dev.yml up -d
+# Для локальної розробки; production використовує окремий compose.yml та секрети.
+# Порти лише на 127.0.0.1. На сервері 5432 уже зайнятий іншим проєктом — тому 5433.
+name: ufv-dev
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ufv
+      POSTGRES_PASSWORD: ufv
+      POSTGRES_DB: ufv
+    ports: ["127.0.0.1:5433:5432"]
+    volumes: ["pgdata:/var/lib/postgresql"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ufv -d ufv"]
+      interval: 5s
+      retries: 10
+
+  nats:
+    image: nats:2
+    command: ["-js", "-sd", "/data"]
+    ports: ["127.0.0.1:4222:4222"]
+    volumes: ["natsdata:/data"]
+
+volumes:
+  pgdata:
+  natsdata:

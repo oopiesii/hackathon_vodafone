@@ -1,0 +1,22 @@
+# Vodafone monitor owns hire.qpon. Retired hire profile subdomains return 404.
+hire.qpon, *.hire.qpon {
+    encode zstd gzip
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        X-Robots-Tag "noindex, nofollow"
+        Strict-Transport-Security "max-age=31536000"
+    }
+    tls {
+        dns cloudflare {$CADDY_ACME_DNS_TOKEN}
+        resolvers 1.1.1.1 1.0.0.1
+    }
+    @vodafone host hire.qpon
+    handle @vodafone {
+        reverse_proxy ufv-api:8080
+    }
+    handle {
+        respond "Vodafone monitor: this address is not configured." 404
+    }
+}
+

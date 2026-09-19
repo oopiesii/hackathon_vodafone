@@ -1,0 +1,23 @@
+{
+  "name": "ufv",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "db"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w @ufv/api",
+    "dev:web": "npm run dev -w @ufv/web",
+    "db:migrate": "npm run migrate -w @ufv/db && npm run auth:migrate -w @ufv/api",
+    "auth:create-admin": "npm run auth:create-admin -w @ufv/api --",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "prepare": "npm run build -w @ufv/shared",
+    "dev:shared": "npm run dev -w @ufv/shared"
+  }
+}

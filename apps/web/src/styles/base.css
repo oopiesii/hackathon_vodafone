@@ -1,0 +1,51 @@
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+html,body{margin:0}
+body{
+  font-family:var(--font-sans); font-size:var(--f-base); line-height:1.5; color:var(--foreground);
+  background:var(--background); min-height:100vh;
+  -webkit-font-smoothing:antialiased; font-feature-settings:"cv11","ss03";
+}
+[hidden]{display:none!important}
+h1,h2,h3,h4,p,dl,dd,blockquote,figure{margin:0}
+h2{font-size:var(--f-md);font-weight:600;letter-spacing:-.01em;line-height:1.4}
+h3{font-size:var(--f-base);font-weight:600;line-height:1.4}
+a{color:inherit;text-underline-offset:3px}
+svg{flex:none}
+code{font-family:var(--font-mono);font-size:var(--f-sm);background:var(--muted);border-radius:4px;padding:2px 6px;overflow-wrap:anywhere}
+
+:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+
+/* Поля форм */
+input:not([type="checkbox"]),select,textarea{
+  width:100%; max-width:100%; min-height:36px; padding:6px 12px; font:inherit; color:var(--foreground);
+  background:var(--background); border:1px solid var(--input); border-radius:var(--radius-sm);
+  box-shadow:var(--shadow-sm); transition:border-color .15s,box-shadow .15s;
+}
+input::placeholder,textarea::placeholder{color:var(--subtle-foreground);opacity:1}
+input:not([type="checkbox"]):focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:none; border-color:var(--ring); box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 40%,transparent);
+}
+input:disabled,select:disabled,textarea:disabled{opacity:.55;cursor:not-allowed}
+select{appearance:none;padding-right:34px;background-image:var(--chevron);background-repeat:no-repeat;background-position:right 10px center;text-overflow:ellipsis}
+select[multiple]{background-image:none;padding:4px;height:auto}
+select[multiple] option{padding:6px 8px;border-radius:4px}
+textarea{min-height:88px;resize:vertical;line-height:1.5;overflow-wrap:anywhere}
+input[type="checkbox"]{width:16px;height:16px;margin:0;flex:none;accent-color:var(--primary)}
+input[type="search"]::-webkit-search-cancel-button{appearance:none}
+
+table{width:100%;border-collapse:collapse;font-size:var(--f-base)}
+th{height:40px;padding:0 16px;text-align:left;font-size:var(--f-sm);font-weight:500;color:var(--muted-foreground);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:12px 16px;border-bottom:1px solid var(--border);vertical-align:middle;overflow-wrap:anywhere}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--canvas)}
+
+details>summary{
+  display:flex;align-items:center;gap:8px;min-height:36px;cursor:pointer;list-style:none;
+  font-size:var(--f-base);font-weight:500;border-radius:var(--radius-sm);
+}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:16px;height:16px;background:var(--chevron) center/16px no-repeat;transform:rotate(-90deg);transition:transform .15s}
+details[open]>summary::before{transform:none}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}

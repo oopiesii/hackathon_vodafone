@@ -1,0 +1,44 @@
+# Залежності та збірка
+node_modules/
+dist/
+*.tsbuildinfo
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+coverage/
+
+# Секрети й машинні налаштування — ніколи не в Git
+.env
+.env.*
+!.env.example
+/dump-env
+*.session
+*.session-journal
+*.pem
+*.key
+admin-bootstrap.txt
+*-env.json
+
+# Локальні дані, резервні копії, журнали
+var/
+*.sqlite*
+*.db*
+*.log
+*.bak
+*.tar.gz
+
+# Знімки перевірок і локальні артефакти агентів
+artifacts/
+tools/.shots/
+test-results/
+playwright-report/
+.claude/settings.local.json
+
+# Тимчасові файли
+/TO-BE-DELETED.html
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

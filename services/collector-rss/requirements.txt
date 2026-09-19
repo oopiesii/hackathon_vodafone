@@ -1,0 +1,3 @@
+# Inherits the shared pipeline runtime dependencies.
+-r ../collector-telegram/requirements.txt
+feedparser==6.0.12

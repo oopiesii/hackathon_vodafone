@@ -1,0 +1,4 @@
+telethon==1.45.0
+cryptography==50.0.1
+psycopg[binary,pool]==3.3.6
+nats-py==2.16.0

@@ -1,0 +1,19 @@
+{
+  "name": "@ufv/shared",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./permissions": { "types": "./dist/permissions.d.ts", "default": "./dist/permissions.js" }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "better-auth": "^1.7.5"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

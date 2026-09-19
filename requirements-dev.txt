@@ -1,0 +1,5 @@
+-r requirements.txt
+httpx>=0.28,<1
+pytest>=8,<10
+pytest-asyncio>=0.25,<2
+playwright>=1.50,<2

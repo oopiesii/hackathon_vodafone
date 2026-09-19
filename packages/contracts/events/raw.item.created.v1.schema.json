@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ufv/events/raw.item.created.v1",
+  "title": "raw.item.created",
+  "description": "Збирач зберіг новий або змінений матеріал у raw.items. Несе лише ідентифікатори: вміст читається з БД, тож подію безпечно доставляти повторно.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "raw_item_id", "source_id", "source_kind", "fetched_at"],
+  "properties": {
+    "v": { "const": 1 },
+    "raw_item_id": { "type": "string", "pattern": "^[0-9]+$", "description": "raw.items.id; рядок, бо bigint" },
+    "source_id": { "type": "string", "pattern": "^[0-9]+$" },
+    "source_kind": { "enum": ["telegram", "rss"] },
+    "fetched_at": { "type": "string", "format": "date-time" }
+  }
+}

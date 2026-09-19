@@ -1,0 +1,111 @@
+name: ufv
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ufv
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ufv
+    volumes: ["pgdata:/var/lib/postgresql"]
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ufv -d ufv"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  nats:
+    image: nats:2
+    command: ["-js", "-sd", "/data"]
+    restart: unless-stopped
+    volumes: ["natsdata:/data"]
+    networks: [backend]
+  api:
+    image: ufv-api:local
+    build: {context: .., dockerfile: deploy/Dockerfile.node}
+    restart: unless-stopped
+    init: true
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://ufv_api:${DB_API_PASSWORD:?}@postgres:5432/ufv
+      PUBLIC_URL: https://hire.qpon
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?}
+      TG_SESSION_KEY: ${TG_SESSION_KEY:?}
+    ports: ["127.0.0.1:8095:8080"]
+    networks:
+      backend: {}
+      proxy: {aliases: [ufv-api]}
+    depends_on:
+      postgres: {condition: service_healthy}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+  collector:
+    image: ufv-pipeline:local
+    build: {context: .., dockerfile: deploy/Dockerfile.pipeline}
+    command: ["python", "-m", "pipeline.telegram"]
+    restart: unless-stopped
+    init: true
+    environment:
+      DATABASE_URL: postgres://ufv_collector:${DB_COLLECTOR_PASSWORD:?}@postgres:5432/ufv
+      NATS_URL: nats://nats:4222
+      TG_SESSION_KEY: ${TG_SESSION_KEY:?}
+    networks: [backend, egress]
+    depends_on:
+      postgres: {condition: service_healthy}
+      nats: {condition: service_started}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+  collector-rss:
+    image: ufv-pipeline:local
+    build: {context: .., dockerfile: deploy/Dockerfile.pipeline}
+    command: ["python", "-m", "pipeline.rss"]
+    restart: unless-stopped
+    init: true
+    environment:
+      DATABASE_URL: postgres://ufv_collector:${DB_COLLECTOR_PASSWORD:?}@postgres:5432/ufv
+      NATS_URL: nats://nats:4222
+    networks: [backend, egress]
+    depends_on:
+      postgres: {condition: service_healthy}
+      nats: {condition: service_started}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+  processor:
+    image: ufv-pipeline:local
+    command: ["python", "-m", "pipeline.processor"]
+    restart: unless-stopped
+    init: true
+    environment:
+      DATABASE_URL: postgres://ufv_processor:${DB_PROCESSOR_PASSWORD:?}@postgres:5432/ufv
+      NATS_URL: nats://nats:4222
+    networks: [backend]
+    depends_on:
+      postgres: {condition: service_healthy}
+      nats: {condition: service_started}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+volumes:
+  pgdata:
+  natsdata:
+networks:
+  backend: {internal: true}
+  egress: {}
+  proxy:
+    external: true
+    name: warblan_app

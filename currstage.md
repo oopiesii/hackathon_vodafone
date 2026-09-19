@@ -56,7 +56,7 @@ apps/
     src/pages/                  Feed, Login, AdminUsers, Account,
                                 TelegramAdmin, SharedDashboard
     src/components/Shell.tsx    навігація й оболонка
-    public/console/             адмінка Telegram: HTML/CSS/JS усередині web
+    src/pages/telegram/         адмінка Telegram: React-сторінки (до редизайну 2026-09-19 — public/console + iframe)
 packages/
   shared/src/permissions.ts     єдине визначення ролей і дозволів
   contracts/events/            JSON Schema події raw.item.created v1
@@ -88,7 +88,7 @@ vodafone-monitor/vodafone-monitor/
                                 вихідний дизайн, а не актуальний runtime
 ```
 
-`TelegramAdmin.tsx` наразі вбудовує `/console/index.html` через iframe того самого origin. Console користується тим самим `/api/admin/*` і Better Auth; окремого публічного входу для неї немає. Для зміни форм дивіться `apps/web/public/console/admin.js`, для перевірок і збереження — `apps/api/src/routes/telegram-admin.ts`.
+Адмінка Telegram — звичайні React-сторінки в `apps/web/src/pages/telegram` (iframe-консоль прибрано під час редизайну 2026-09-19). Вони користуються тим самим `/api/admin/*` і Better Auth; окремого публічного входу немає. Для зміни форм дивіться `*Tab.tsx` у цій теці, для перевірок і збереження — `apps/api/src/routes/telegram-admin.ts`.
 
 **Попередній прототип:** FastAPI/SQLite-варіант раніше лежав у кореневих `app/`, `static/`, `deploy/Dockerfile`, `tests/test_api.py`, `tests/test_pipeline.py`. На повторній перевірці о 12:52 UTC цих файлів уже немає: основна інтеграція прибрала їх із робочого дерева. Архів попереднього стану є на сервері в `/var/backups/ufv-before-integration/telethon-prototype.tar.gz`, поза Git. Не відновлюйте другий backend за старими інструкціями. Кореневий `requirements.txt` тепер підключає залежності `services/collector-telegram/requirements.txt`, а `requirements-dev.txt` додає тестові інструменти.
 
@@ -211,7 +211,7 @@ API ID/API hash/StringSession задаються для конкретного �
 | 2. API / auth | `telegram-admin.ts`, `feed.ts`, `permissions.ts`, `bootstrap.py` | Узгодити права analyst: зараз share/review-маршрути мають admin-only `collector.manage`, хоча спільні ролі/частина UI передбачають ширші права. Перевірити кожен запит під runtime DB-роллю |
 | 3. Collector | `services/pipeline/telegram.py`, `raw.py` | Перевірити пости, вкладені коментарі, рестарт, історичне добирання, редагування, видалення, FloodWait, вимкнення/ротацію сесії на дозволеному тестовому каналі |
 | 4. Processor / якість | `classification.py`, `processor.py`, `tests/test_runtime.py` | Прогнати fixtures; вручну розмітити малу реальну вибірку; показати хибні спрацювання, виправлення й контекст. Узгодити повторну обробку після ручної зміни рішення батька |
-| 5. Frontend | `apps/web/src/pages`, `public/console` | У браузері перевірити admin/analyst/viewer, login/logout, порожній стан, помилки, контекст, share scopes, відкликання, мобільний екран та iframe |
+| 5. Frontend | `apps/web/src/pages`, `src/styles`, `components/ui.tsx` | У браузері перевірити admin/analyst/viewer, login/logout, порожній стан, помилки, контекст, share scopes, відкликання, мобільний екран і темну тему |
 | 6. Інфраструктура | `deploy/*`, Caddy цього сервера | Перезібрати поточний код, завершити запуск, перевірити grants/health/логи, потім перевести `hire.qpon` на UFV з HTTPS та перевірити старі шляхи й піддомени |
 | 7. Демо / документація | `currstage.md`, `docs/*`, дозволені матеріали | Записати фактичний сценарій комунікаційного менеджера, джерела, затримки й обмеження; за потреби підготувати явно позначений replay |
 

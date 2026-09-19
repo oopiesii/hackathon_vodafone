@@ -1,0 +1,109 @@
+{
+  "checked_at": "2026-09-19",
+  "sources": [
+    {
+      "url": "https://www.ukrinform.ua/rss/block-lastnews",
+      "title": "Укрінформ — Останні новини",
+      "publisher": "Укрінформ",
+      "rights_status": "allowed",
+      "terms_url": "https://www.ukrinform.ua/info/reg_rules.html",
+      "permission_note": "Опубліковані умови: цитування в Інтернеті з гіперпосиланням на джерело біля першого абзацу. Лише заголовок та RSS-анонс; повні статті й переклади не завантажуються."
+    },
+    {
+      "url": "https://www.ukrinform.ua/rss/rubric-economy",
+      "title": "Укрінформ — Економіка",
+      "publisher": "Укрінформ",
+      "rights_status": "allowed",
+      "terms_url": "https://www.ukrinform.ua/info/reg_rules.html",
+      "permission_note": "Опубліковані умови: цитування в Інтернеті з гіперпосиланням на джерело біля першого абзацу. Лише заголовок та RSS-анонс; повні статті й переклади не завантажуються."
+    },
+    {
+      "url": "https://www.ukrinform.ua/rss/rubric-technology",
+      "title": "Укрінформ — Технології",
+      "publisher": "Укрінформ",
+      "rights_status": "allowed",
+      "terms_url": "https://www.ukrinform.ua/info/reg_rules.html",
+      "permission_note": "Опубліковані умови: цитування в Інтернеті з гіперпосиланням на джерело біля першого абзацу. Лише заголовок та RSS-анонс; повні статті й переклади не завантажуються."
+    },
+    {
+      "url": "https://www.ukrinform.ua/rss/rubric-regions",
+      "title": "Укрінформ — Регіони",
+      "publisher": "Укрінформ",
+      "rights_status": "allowed",
+      "terms_url": "https://www.ukrinform.ua/info/reg_rules.html",
+      "permission_note": "Опубліковані умови: цитування в Інтернеті з гіперпосиланням на джерело біля першого абзацу. Лише заголовок та RSS-анонс; повні статті й переклади не завантажуються."
+    },
+    {
+      "url": "https://www.ukrinform.ua/rss/rubric-society",
+      "title": "Укрінформ — Суспільство",
+      "publisher": "Укрінформ",
+      "rights_status": "allowed",
+      "terms_url": "https://www.ukrinform.ua/info/reg_rules.html",
+      "permission_note": "Опубліковані умови: цитування в Інтернеті з гіперпосиланням на джерело біля першого абзацу. Лише заголовок та RSS-анонс; повні статті й переклади не завантажуються."
+    },
+    {
+      "url": "https://detector.media/rss/",
+      "title": "Детектор медіа",
+      "publisher": "Детектор медіа",
+      "rights_status": "allowed",
+      "terms_url": "https://detector.media/",
+      "permission_note": "Опубліковані умови передруку/цитування: назва та гіперпосилання на видання в першому абзаці. Показуємо тільки заголовок і RSS-анонс з посиланням."
+    },
+    {
+      "url": "https://ms.detector.media/rss/",
+      "title": "MediaSapiens",
+      "publisher": "Детектор медіа",
+      "rights_status": "allowed",
+      "terms_url": "https://ms.detector.media/",
+      "permission_note": "Опубліковані умови передруку/цитування: назва та гіперпосилання на видання в першому абзаці. Показуємо тільки заголовок і RSS-анонс з посиланням."
+    },
+    {
+      "url": "https://www.kmu.gov.ua/api/rss",
+      "title": "Кабінет Міністрів України",
+      "publisher": "Урядовий портал",
+      "rights_status": "allowed",
+      "terms_url": "https://www.kmu.gov.ua/",
+      "permission_note": "Урядовий портал публікує матеріали за CC BY 4.0, крім окремо зазначених винятків. Текстовий RSS-анонс з посиланням; фотографії не копіюємо."
+    },
+    {
+      "url": "https://itc.ua/ua/feed/",
+      "title": "ITC",
+      "publisher": "ITC",
+      "rights_status": "blocked",
+      "terms_url": "https://itc.ua/ua/polityky-itc-ua/",
+      "permission_note": "Пункти 2.4–2.5: письмова згода на копіювання; виняток лише для нерегулярного цитування до 5%. Дозволу для регулярного збору немає."
+    },
+    {
+      "url": "https://ain.ua/feed/",
+      "title": "AIN",
+      "publisher": "AIN",
+      "rights_status": "blocked",
+      "terms_url": "https://ain.ua/user-agreement/",
+      "permission_note": "Пункти 2.4–2.5: письмова згода на копіювання; нерегулярне цитування до 5% не є дозволом на регулярний збір."
+    },
+    {
+      "url": "https://dev.ua/rss",
+      "title": "dev.ua",
+      "publisher": "dev.ua",
+      "rights_status": "blocked",
+      "terms_url": "https://dev.ua/pages/agreement",
+      "permission_note": "Пункт 2.2.7 вимагає згоду адміністрації на використання інформації; окремого дозволу для нашого сценарію немає."
+    },
+    {
+      "url": "https://interfax.com.ua/news/telecom.rss",
+      "title": "Інтерфакс — Телеком",
+      "publisher": "Інтерфакс",
+      "rights_status": "blocked",
+      "terms_url": "https://interfax.com.ua/",
+      "permission_note": "Лише персональне використання; відтворення/поширення за письмовим дозволом. Відкрита частина затримана щонайменше на 15 хвилин."
+    },
+    {
+      "url": "https://interfax.com.ua/news/last.rss",
+      "title": "Інтерфакс — Останні новини",
+      "publisher": "Інтерфакс",
+      "rights_status": "blocked",
+      "terms_url": "https://interfax.com.ua/",
+      "permission_note": "Лише персональне використання; відтворення/поширення за письмовим дозволом. Не активовано без дозволу."
+    }
+  ]
+}

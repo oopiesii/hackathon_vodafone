@@ -1,0 +1,11 @@
+{
+  "name": "@ufv/db",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "migrate": "node --env-file-if-exists=../.env migrate.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.23.0"
+  }
+}
