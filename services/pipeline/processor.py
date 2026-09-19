@@ -121,7 +121,7 @@ async def main():
                 where m.context_id is null and not m.deleted and not pm.deleted limit 100''')
             for row in late:
                 process(db,row['id'])
-            if time.monotonic() - last_rollup >= 60:
+            if time.monotonic() - last_rollup >= 2:
                 try:
                     db.execute('select core.refresh_dashboard_rollups()')
                 except Exception as exc:

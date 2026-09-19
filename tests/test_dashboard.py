@@ -99,10 +99,21 @@ def test_dashboard_manual_current_version_scope_and_rollups(prepared):
     viewer=role_client(admin,cfg,'viewer')
     try:
         assert viewer.get('/api/dashboard').json()['metrics']['mentions']['value']==0
-        assert viewer.get('/api/dashboard?window=30d').json()['metrics']['mentions']['value']==0
+        pending=viewer.get('/api/dashboard?window=30d').json()
+        assert pending['metrics']['mentions']['value'] is None
+        assert pending['aggregation']['complete'] is False
+        assert 'dirty_sources' not in pending['aggregation']
+        db.execute('select core.refresh_dashboard_rollups()')
+        complete=viewer.get('/api/dashboard?window=30d').json()
+        assert complete['metrics']['mentions']['value']==0
+        assert complete['aggregation']['complete'] is True
         # A new raw version invalidates that decision. No stale text/counters in viewer response.
         row=db.one('select raw_item_id from core.mentions where id=%s',(mid,))
+        unrelated_generation=db.one('select generated_at from core.dashboard_rollup_state where source_id=%s',(sid,))['generated_at']
         db.execute('update raw.items set version=version+1 where id=%s',(row['raw_item_id'],))
+        assert db.one('select dirty from core.dashboard_rollup_state where source_id=%s',(s['id'],))['dirty'] is True
+        db.execute('select core.refresh_dashboard_rollups()')
+        assert db.one('select generated_at from core.dashboard_rollup_state where source_id=%s',(sid,))['generated_at']==unrelated_generation
         v=viewer.get('/api/dashboard').json()
         assert v['metrics']['mentions']['value']==0
         assert not v['sources']

@@ -66,19 +66,32 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
  const href=(filters:Record<string,string>={})=>'/feed?'+new URLSearchParams({workflow_id:workflow,decision:review?'visible':'accepted',from:iso(start),until:iso(end),window,...filters});
  const inboxHref=(filters:Record<string,string>={})=>'/inbox?'+new URLSearchParams({workflow_id:workflow,from:iso(start),until:iso(end),window,...filters});
  const metric=(value:number|null,unit:string,link:string,series:number[]=[],measured=0,note=''):DashboardMetric=>({value,unit,href:link,series,measured,note});
- const [freshnessRows,rollups,rawRows]=await Promise.all([
+ const [freshnessRows,monthly,rawRows,operatorRows]=await Promise.all([
   query(`select s.kind service,bool_or(s.enabled and w.enabled and coalesce(md.enabled,false)) enabled,
    max(case when s.kind='telegram' then st.last_success_at else rs.last_success_at end) last_success_at,
    max(svc.heartbeat_at) heartbeat_at from core.sources s join core.workflows w on w.id=s.workflow_id
    left join core.modules md on md.name=s.kind left join raw.source_state st on st.source_id=s.id
    left join core.rss_status rs on rs.id=s.id left join raw.service_status svc on svc.name=case when s.kind='rss' then 'collector-rss' else 'collector-telegram' end
    where s.workflow_id=$1 group by s.kind`,[workflow]),
-  window==='30d'?query(`select r.*,r.day::text day_key,s.title,s.external_id from core.daily_rollups r join core.sources s on s.id=r.source_id
+  window==='30d'?query(`select
+    (select row_to_json(c) from core.dashboard_rollup_coverage c where c.workflow_id=$1) coverage,
+    coalesce(jsonb_agg(to_jsonb(r)||jsonb_build_object('day_key',r.day::text,'title',s.title,'external_id',s.external_id) order by r.day),'[]') rollups
+    from core.daily_rollups r join core.sources s on s.id=r.source_id
+    join core.dashboard_rollup_state st on st.source_id=r.source_id and not st.dirty
     where r.workflow_id=$1 and r.day>=($2::timestamptz at time zone 'Europe/Kyiv')::date
-    ${review?'':"and r.decision='accepted'"} order by r.day`,[workflow,iso(start)]):Promise.resolve([]),
-  window==='30d'?Promise.resolve([]):query(`select * from core.dashboard_items where workflow_id=$1 and event_at>=$2 and event_at<=$3
-    and decision<>'deleted' ${review?'':"and decision='accepted'"} order by event_at,id`,[workflow,new Date(now-7*24*HOUR),end]),
+    ${review?'':"and r.decision='accepted'"}`, [workflow,iso(start)]):Promise.resolve([]),
+  window==='30d'?Promise.resolve([]):query(`select raw_item_id,id,source_id,source_kind,source_title,kind,url,published_at,fetched_at,
+    event_at,content_hash,canonical_item_id,left(quote,280) quote,topic,brand,decision,negative,outage,action,
+    views,reactions,metrics_observed_at,lag_seconds,watch_active
+    from core.dashboard_items where workflow_id=$1 and event_at>=$2 and event_at<=$3
+    and decision=any($4::text[]) order by event_at,id`,[workflow,new Date(now-7*24*HOUR),end,review?['accepted','review']:['accepted']]),
+  window==='30d'||!review?Promise.resolve([]):query(`select source_kind,decision,count(*)::int count,
+    coalesce(array_agg(lag_seconds) filter(where lag_seconds is not null),'{}') lag_samples
+    from core.dashboard_items where workflow_id=$1 and event_at>=$2 and event_at<=$3 and decision<>'deleted'
+    group by source_kind,decision`,[workflow,start,end]),
  ]);
+ const coverage=monthly[0]?.coverage||{source_count:0,dirty_sources:0,generated_at:null};
+ const rollups:Item[]=monthly[0]?.rollups||[];
  const eligible=rawRows.filter(i=>commentEligible(i,now));
  const all=rawRows.filter(i=>time(i.event_at)>=start.getTime());
  const items=all.filter(i=>visible(i,review)&&commentEligible(i,now));
@@ -91,7 +104,7 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
   observed_items:sum(aggregate.map(r=>r.reactions_measured)),total:0,negative_share:null as number|null,
  }:reactions(items);
  rx.total=rx.negative+rx.ironic+rx.sad+rx.positive;rx.negative_share=rx.total?(rx.negative+rx.ironic)/rx.total:null;
- const count=(decision:string)=>window==='30d'?sum(rollups.filter(i=>i.decision===decision).map(i=>i.count)):all.filter(i=>i.decision===decision).length;
+ const count=(decision:string)=>window==='30d'?sum(rollups.filter(i=>i.decision===decision).map(i=>i.count)):review?sum(operatorRows.filter(i=>i.decision===decision).map(i=>i.count)):all.filter(i=>i.decision===decision).length;
  const mentions=window==='30d'?sum(aggregate.map(i=>i.count)):items.length;
  const byTopic=new Map<string,number>(),bySource=new Map<string,{id:string;title:string;kind:string;count:number;href:string}>();
  for(const i of window==='30d'?aggregate:items){
@@ -148,9 +161,9 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
  const delta=todayShare!==null&&dailyShares.length?(todayShare-sum(dailyShares)/dailyShares.length)*100:null;
  const brandLevel=window==='30d'||!brandToday.length?'unknown':activeBrand.some(s=>s.level==='h')?'critical':activeBrand.some(s=>s.level==='m')||(delta!==null&&delta>=10)?'attention':'calm';
  const measured=window==='30d'?aggregate.flatMap(i=>i.lag_samples.map(Number)):items.filter(i=>i.lag_seconds!==null).map(i=>Number(i.lag_seconds));
- const lags=window==='30d'?rollups:all;
- const lagServices=[...new Set(lags.map(i=>i.source_kind))].map(service=>{const rows=lags.filter(i=>i.source_kind===service);const samples=window==='30d'?rows.flatMap(i=>i.lag_samples.map(Number)):rows.filter(i=>i.lag_seconds!==null).map(i=>Number(i.lag_seconds));return {service,median_seconds:median(samples),measured:samples.length,href:review?inboxHref({source_kind:service,lag:'1'}):href({source_kind:service,lag:'1'})};});
- const lagSamples=review?(window==='30d'?rollups.flatMap(i=>i.lag_samples.map(Number)):all.filter(i=>i.lag_seconds!==null).map(i=>Number(i.lag_seconds))):measured;
+ const lags=window==='30d'?rollups:review?operatorRows:all;
+ const lagServices=[...new Set(lags.map(i=>i.source_kind))].map(service=>{const rows=lags.filter(i=>i.source_kind===service);const samples=window==='30d'||review?rows.flatMap(i=>i.lag_samples.map(Number)):rows.filter(i=>i.lag_seconds!==null).map(i=>Number(i.lag_seconds));return {service,median_seconds:median(samples),measured:samples.length,href:review?inboxHref({source_kind:service,lag:'1'}):href({source_kind:service,lag:'1'})};});
+ const lagSamples=review?(window==='30d'?rollups.flatMap(i=>i.lag_samples.map(Number)):operatorRows.flatMap(i=>i.lag_samples.map(Number))):measured;
  const negative=items.filter(i=>i.negative&&i.decision==='accepted');
  const reachMeasured=window==='30d'?sum(aggregate.map(i=>i.views_measured)):negative.filter(i=>i.views!==null).length;
  const negativeReach=window==='30d'?sum(aggregate.map(i=>Number(i.negative_reach))):sum(negative.filter(i=>i.views!==null).map(i=>Number(i.views)));
@@ -167,10 +180,10 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
  const reactionShares=window==='30d'?[]:hourly.map(b=>reactions(items.filter(i=>Math.floor(time(i.event_at)/HOUR)===Math.floor(time(b.at)/HOUR))).negative_share);
  const reactionSeries=reactionShares.some(n=>n===null)?[]:reactionShares.map(n=>n!*100);
  const counts:DashboardResponse['counts']={accepted:count('accepted')};
- if(review)Object.assign(counts,{review:count('review'),collected:window==='30d'?sum(rollups.map(i=>i.count)):all.length,rejected:count('rejected'),pending:count('pending')});
+ if(review)Object.assign(counts,{review:count('review'),collected:window==='30d'?sum(rollups.map(i=>i.count)):sum(operatorRows.map(i=>i.count)),rejected:count('rejected'),pending:count('pending')});
  const criticalIds=current.filter(i=>signals.some(s=>s.level==='h'&&s.topic===i.topic&&s.brand===i.brand)&&(i.negative||anomalyIds.has(String(i.id)))).map(i=>String(i.id));
  const result:DashboardResponse={
-  version:1,aggregate_updated_at:window==='30d'&&rollups.length?iso(new Date(Math.min(...rollups.map(r=>time(r.generated_at))))):null,workflow_id:workflow,window,start:iso(start),end:iso(end),timezone:'Europe/Kyiv',generated_at:iso(end),aggregated:window==='30d',visibility:review?'accepted_review':'accepted',
+  version:1,aggregation:window==='30d'?{complete:coverage.dirty_sources===0,...(review?{dirty_sources:coverage.dirty_sources,source_count:coverage.source_count}:{}),generated_at:coverage.generated_at,note:coverage.dirty_sources?'Згортки перераховуються; неповні значення приховано.':'Атомарний зріз добових згорток.'}:undefined,aggregate_updated_at:window==='30d'&&rollups.length?iso(new Date(Math.min(...rollups.map(r=>time(r.generated_at))))):null,workflow_id:workflow,window,start:iso(start),end:iso(end),timezone:'Europe/Kyiv',generated_at:iso(end),aggregated:window==='30d',visibility:review?'accepted_review':'accepted',
   brand_status:{level:brandLevel,title:{calm:'Спокійно',attention:'Увага',critical:'Критично',unknown:'Недостатньо даних'}[brandLevel],reason:brandLevel==='unknown'?(window==='30d'?'Статус зараз доступний у вікні 24 годин.':'За 24 години немає видимих згадок Vodafone.'):(activeBrand[0]?.title||'Правила не виявили високого сигналу.'),negative_delta_pp:delta,href:href({brand:'vodafone',from:iso(new Date(now-24*HOUR))})},
   metrics:{mentions:metric(mentions,'матеріалів',href(),countSeries,mentions,'Прийняті та на перевірці; viewer бачить тільки прийняті.'),
    critical:metric(window==='30d'?null:criticalIds.length,'матеріалів',href({ids:criticalIds.join(',')||'0',from:iso(new Date(now-24*HOUR))}),[],criticalIds.length,'Високий сигнал за останні 24 години; поріг правил, не ймовірність кризи.'),
@@ -194,6 +207,13 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
    ...(window==='30d'?['У місячному режимі доступні агрегати. Поточні сигнали, швидкості окремих матеріалів і аномалії охоплення відкрийте у вікні 24 години або 7 днів.']:[])],
  };
  if(review)result.metrics.noise=metric(count('rejected'),'матеріалів',inboxHref({state:'rejected'}),[],count('rejected'),'Відсіяно чинними правилами або рішенням людини; це не доведена точність фільтра.');
+ if(window==='30d'&&coverage.dirty_sources){
+  for(const m of Object.values(result.metrics)){m.value=null;m.series=[];m.measured=0;m.note='Згортки перераховуються; неповний підсумок не показуємо.';}
+  result.hourly=[];result.topics=[];result.sources=[];result.competitors=[];result.lag_by_service=[];
+  result.reactions={negative:0,ironic:0,sad:0,positive:0,total:0,observed_items:0,negative_share:null,href:href(),note:'Згортки перераховуються.'};
+  result.counts={accepted:0};result.complaints={count:0,per_hour:0,href:href({kind:'comment'}),note:'Згортки перераховуються.'};
+  result.ai.summary='Згортки перераховуються; підсумок з’явиться після завершення.';
+ }
  return result;
 }
 export const dashboard=new Hono<AppEnv>().get('/',requireSession,async c=>c.json(await getDashboard(c.req.query(),hasPermission(c.get('user').role,{incident:['edit']}))));
