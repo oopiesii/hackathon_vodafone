@@ -11,10 +11,16 @@ const CATS={net:"Мережа і збої",cov:"Покриття",bill:"Спис
 const CATCOL={net:"#E60000",cov:"#9E0000",bill:"#FF7A7A",tariff:"#FFC2C2",sup:"#000000"};
 const SRCCOL={"Telegram":"#E60000","ЗМІ":"#FF9C9C","Сайт Vodafone":"#000000","Threads":"#FFFFFF","Instagram":"#FFFFFF","X":"#FFFFFF"};
 
+// Дата, на яку зібрано весь знімок. Використовується і в текстах, і в AI-аналітику
+// для розрахунку "останньої доби" — це не поточна дата відвідувача.
+const SNAPSHOT_DATE="2026-09-19";
+
 const mentions=[
- {d:"2026-09-16",sev:"m",cat:"cov",src:"Сайт Vodafone",what:"Обухів: на вимогу орендодавця демонтовано одну базову станцію. Можливе погіршення покриття в районі.",url:"https://www.vodafone.ua/news",site:"vodafone.ua"},
+ // status: "open"/"resolved" — лише там, де це явно зафіксовано в тексті знімка (розділ "Найкритичніша ситуація" / "Що зараз").
+ // Немає status → у знімку немає підтвердженого закриття; це невідоме, а не "вирішено за замовчуванням".
+ {d:"2026-09-16",sev:"m",cat:"cov",src:"Сайт Vodafone",what:"Обухів: на вимогу орендодавця демонтовано одну базову станцію. Можливе погіршення покриття в районі.",url:"https://www.vodafone.ua/news",site:"vodafone.ua",status:"open"},
  {d:"2026-09-09",sev:"l",cat:"tariff",src:"ЗМІ",what:"З 15.09 закрито для нових підключень шість IoT-тарифів (24–500 грн). Чинних абонентів не торкається.",url:"https://novyny.live/ekonomi/zmini-dlia-kliientiv-vodafone-shcho-bude-z-tarifnimi-planami-z-15-veresnia-343761.html",site:"novyny.live",dApprox:true},
- {d:"2026-07-02",sev:"h",cat:"net",src:"Telegram",what:"Після обстрілу Києва — перебої домашнього інтернету, поповнення рахунку й контакт-центру. Охоплення посту 4× від норми.",url:"https://t.me/VFUkraine/1429",site:"t.me/VFUkraine"},
+ {d:"2026-07-02",sev:"h",cat:"net",src:"Telegram",what:"Після обстрілу Києва — перебої домашнього інтернету, поповнення рахунку й контакт-центру. Охоплення посту 4× від норми.",url:"https://t.me/VFUkraine/1429",site:"t.me/VFUkraine",status:"resolved"},
  {d:"2026-07-02",sev:"m",cat:"net",src:"ЗМІ",what:"Медіа підхопили збій: перелік недоступних сервісів і контекст атаки.",url:"https://thepage.ua/ua/news/problemi-zi-zvyazkom-vodafone-pislya-ataki-na-kiyiv-2-lipnya-2026-sho-vidomo",site:"thepage.ua"},
  {d:"2026-07-02",sev:"m",cat:"net",src:"ЗМІ",what:"Агрегатор новин поширив матеріал про збої мережі Vodafone.",url:"https://www.ukr.net/news/details/technologies/118279815.html",site:"ukr.net"},
  {d:"2026-06-28",sev:"m",cat:"bill",src:"ЗМІ",what:"Абоненти скаржаться, що з рахунку зникають кошти за послуги, які вони не підключали.",url:"https://sport.znaj.ua/551047-rahunok-tane-bez-poperedzhennya-vodafone-spisuye-groshi-za-neisnuyuchi-poslugi",site:"znaj.ua"},

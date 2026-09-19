@@ -47,7 +47,7 @@ a:focus-visible,button:focus-visible{outline:3px dashed var(--red);outline-offse
 .bar .btns{display:flex;gap:3px}
 .bar .btns span{width:18px;height:16px;background:#fff;color:var(--red);font:700 11px/14px var(--body);
   text-align:center;border:1px solid;border-color:#fff #600 #600 #fff}
-.pane{padding:14px 16px}
+.pane{padding:14px 16px;overflow-wrap:anywhere}
 
 /* masthead */
 .mast{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
@@ -126,14 +126,53 @@ td.what{max-width:44ch}
 .how ul{padding-left:18px;margin:0}
 .asm{background:var(--pink);border-left:4px solid var(--red);padding:2px 8px;display:block;margin:4px 0}
 footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--muted)}
-.counter{display:inline-block;background:#000;color:#FF3B3B;padding:1px 6px;letter-spacing:2px;border:2px inset #888}
 .theme{font:12px var(--body);background:var(--paper);color:var(--ink);border:1px solid var(--red);cursor:pointer;padding:2px 8px}
+
+/* tabs */
+.tabbar{display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap}
+.tabbtn{font:15px var(--pixel);background:var(--paper);color:var(--ink);border:2px solid;
+  border-color:var(--hi) var(--lo) var(--lo) var(--hi);padding:6px 16px;cursor:pointer}
+.tabbtn[aria-selected="true"]{background:var(--red);color:#fff;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+.view[hidden]{display:none}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* chat */
+.chatlog{max-height:min(440px,60vh);min-height:180px;overflow-y:auto;border:2px inset var(--pink-2);
+  background:var(--paper);padding:10px;margin:0 0 10px}
+.msg{max-width:88%;margin:0 0 10px;padding:8px 10px;font-size:13px;line-height:1.55;border:1px solid var(--red)}
+.msg.bot{background:var(--pink);margin-right:auto}
+.msg.user{background:var(--red);color:#fff;margin-left:auto;border-color:var(--red-deep)}
+.msg h4{margin:0 0 6px;font-family:var(--pixel);font-size:14px}
+.msg p{margin:6px 0}
+.msg ul{margin:6px 0;padding-left:18px}
+.msg li{margin-bottom:4px}
+.msg a{word-break:break-word}
+.suggest{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chatform{display:flex;gap:8px}
+.chatform input[type=text]{flex:1;min-width:0;padding:8px 10px;font:13px var(--body);border:2px solid;
+  border-color:var(--lo) var(--hi) var(--hi) var(--lo);background:var(--paper);color:var(--ink)}
 
 @media (max-width:900px){
   .critgrid,.charts,.how{grid-template-columns:1fr}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
-@media (max-width:520px){.mast{grid-template-columns:1fr}.logo{width:52px;height:52px}.logo:after{left:17px;top:10px;width:20px;height:28px}}
+@media (max-width:520px){
+  .mast{grid-template-columns:1fr}
+  .logo{width:52px;height:52px}
+  .logo:after{left:17px;top:10px;width:20px;height:28px}
+  .msg{max-width:94%}
+}
+@media (max-width:480px){
+  .wrap{padding:14px 10px 32px}
+  .pane{padding:12px}
+  .stats{grid-template-columns:1fr 1fr;gap:8px}
+  .stat{padding:8px 10px}
+  .stat .n{font-size:32px}
+  .tabbtn{padding:6px 10px;font-size:13px}
+  .chip{padding:3px 8px;font-size:12px}
+  .chatform{gap:6px}
+}
+@media (max-width:360px){.stats{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -143,7 +182,7 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
 <!-- MASTHEAD -->
 <section class="win">
   <div class="bar"><span>vodafone_monitor.exe</span>
-    <div class="btns"><button class="theme" id="themeBtn" type="button">Тема</button><span>_</span><span>□</span><span>×</span></div></div>
+    <div class="btns"><button class="theme" id="themeBtn" type="button">Тема</button></div></div>
   <div class="pane mast">
     <div class="logo" aria-hidden="true"></div>
     <div>
@@ -154,9 +193,17 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
   </div>
 </section>
 
+<!-- TABS -->
+<div class="tabbar" role="tablist" aria-label="Розділи">
+  <button class="tabbtn" role="tab" aria-selected="true" aria-controls="view-dash" id="tabBtnDash" data-tab="dash" type="button">📊 Дашборд</button>
+  <button class="tabbtn" role="tab" aria-selected="false" aria-controls="view-chat" id="tabBtnChat" data-tab="chat" type="button">🤖 AI-аналітик</button>
+</div>
+
+<div class="view" id="view-dash" role="tabpanel" aria-labelledby="tabBtnDash">
+
 <!-- CRITICAL -->
 <section class="win crit" aria-labelledby="critTitle">
-  <div class="bar"><span><b class="blink">!!!</b> Найкритичніша ситуація у знімку</span><div class="btns"><span>×</span></div></div>
+  <div class="bar"><span><b class="blink">!!!</b> Найкритичніша ситуація у знімку</span></div>
   <div class="pane critgrid">
     <div>
       <h2 id="critTitle">Збій після нічного обстрілу Києва: домашній інтернет, поповнення рахунку, контакт-центр</h2>
@@ -196,7 +243,7 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
 <div class="stats" id="stats"></div>
 
 <section class="win">
-  <div class="bar"><span>Статистика знімка</span><div class="btns"><span>×</span></div></div>
+  <div class="bar"><span>Статистика знімка</span></div>
   <div class="pane charts">
     <div class="chart"><h3>Негатив за темою</h3><div id="donutCat"></div><ul class="legend" id="legCat"></ul></div>
     <div class="chart"><h3>Звідки згадки</h3><div id="donutSrc"></div><ul class="legend" id="legSrc"></ul></div>
@@ -209,7 +256,7 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
 
 <!-- LIST -->
 <section class="win" aria-labelledby="listTitle">
-  <div class="bar"><span id="listTitle">Усі негативні згадки</span><div class="btns"><span>×</span></div></div>
+  <div class="bar"><span id="listTitle">Усі негативні згадки</span></div>
   <div class="pane">
     <div class="chips" id="chips" role="group" aria-label="Фільтр за темою"></div>
     <div class="scroll"><table>
@@ -221,7 +268,7 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
 
 <!-- FILTERED -->
 <section class="win">
-  <div class="bar"><span>Відсіяно як шум — і чому</span><div class="btns"><span>×</span></div></div>
+  <div class="bar"><span>Відсіяно як шум — і чому</span></div>
   <div class="pane">
     <p class="note" style="margin-top:0">Кожна з цих згадок пройшла б простий фільтр «Vodafone + збій/негатив». Без перевірки вони дали б хибну тривогу.</p>
     <ul class="filt" id="filtered"></ul>
@@ -230,7 +277,7 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
 
 <!-- HOW -->
 <section class="win">
-  <div class="bar"><span>Як це працює, затримка і припущення</span><div class="btns"><span>×</span></div></div>
+  <div class="bar"><span>Як це працює, затримка і припущення</span></div>
   <div class="pane how">
     <div>
       <h3>Що в знімку реальне, а що ні</h3>
@@ -267,7 +314,25 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
   </div>
 </section>
 
-<footer>Відвідувачів: <span class="counter">000419</span> · зроблено в червоно-білих тонах · знімок 19.09.2026</footer>
+</div>
+
+<!-- AI-АНАЛІТИК -->
+<div class="view" id="view-chat" role="tabpanel" aria-labelledby="tabBtnChat" hidden>
+<section class="win" aria-labelledby="chatTitle">
+  <div class="bar"><span id="chatTitle">ai_analyst.exe — звіти зі знімка</span></div>
+  <div class="pane">
+    <div class="suggest" id="suggest"></div>
+    <div class="chatlog" id="chatlog" role="log" aria-live="polite" aria-label="Історія чату"></div>
+    <form class="chatform" id="chatform">
+      <label class="sr-only" for="chatInput">Питання до AI-аналітика</label>
+      <input type="text" id="chatInput" placeholder="Напишіть, що хочете дізнатись…" autocomplete="off">
+      <button class="chip" type="submit">Надіслати</button>
+    </form>
+  </div>
+</section>
+</div>
+
+<footer>зроблено в червоно-білих тонах · знімок 19.09.2026</footer>
 </div>
 
 <script src="data.js"></script>
@@ -347,6 +412,168 @@ document.getElementById("themeBtn").addEventListener("click",()=>{
   const dark=cur?cur==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
   r.setAttribute("data-theme",dark?"light":"dark");
 });
+
+// tabs
+const tabBtns=document.querySelectorAll(".tabbtn");
+tabBtns.forEach(btn=>btn.addEventListener("click",()=>{
+  tabBtns.forEach(b=>b.setAttribute("aria-selected",b===btn?"true":"false"));
+  document.getElementById("view-dash").hidden=btn.dataset.tab!=="dash";
+  document.getElementById("view-chat").hidden=btn.dataset.tab!=="chat";
+  if(btn.dataset.tab==="chat")document.getElementById("chatInput").focus();
+}));
+
+// ---- AI-аналітик: локальні звіти зі знімка (без зовнішніх LLM-викликів) ----
+function shiftDate(d,days){const dt=new Date(d+"T00:00:00Z");dt.setUTCDate(dt.getUTCDate()+days);return dt.toISOString().slice(0,10)}
+function daysBefore(d,ref){return Math.round((new Date(ref+"T00:00:00Z")-new Date(d+"T00:00:00Z"))/86400000)}
+function inWindow(d,from,to){return d>=from&&d<=to}
+const STATUS_LABEL={open:"відкрито",resolved:"вирішено"};
+
+function reportLastDay(){
+  const from=shiftDate(SNAPSHOT_DATE,-1);
+  const recent=mentions.filter(m=>!m.dApprox&&inWindow(m.d,from,SNAPSHOT_DATE));
+  let html=`<h4>Що сталося за останню добу</h4>`;
+  html+=`<p>Вікно: ${fmt(from)}–${fmt(SNAPSHOT_DATE)}. Знімок статичний, тому «зараз» тут — дата збору, а не сьогоднішній день.</p>`;
+  if(recent.length===0){
+    const latest=[...mentions].sort((a,b)=>new Date(b.d)-new Date(a.d))[0];
+    html+=`<p><b>За цей період нових негативних згадок у знімку не зафіксовано.</b> Порожній звіт — теж результат: це означає лише, що в межах перевірених джерел (Telegram-канал, вебпошук ЗМІ, сайт vodafone.ua) нових сигналів не знайдено, а не що в реальності нічого не сталося.</p>`;
+    html+=`<p>Найсвіжіший сигнал у знімку: ${fmt(latest.d)}${latest.dApprox?" (дата приблизна)":""} — «${esc(latest.what)}» (<a href="${latest.url}" target="_blank" rel="noopener">${latest.site}</a>), це ${daysBefore(latest.d,SNAPSHOT_DATE)} дн. до дати збору.</p>`;
+  }else{
+    html+=`<ul>`+recent.map(m=>`<li><span class="sev ${m.sev}">${SEV[m.sev]}</span> <span class="tag">${CATS[m.cat]}</span> ${esc(m.what)} — <a href="${m.url}" target="_blank" rel="noopener">${m.site}</a></li>`).join("")+`</ul>`;
+  }
+  return html;
+}
+
+function reportRisks(){
+  const weight={h:3,m:2,l:1};
+  const ranked=[...mentions].sort((a,b)=>weight[b.sev]-weight[a.sev]||new Date(b.d)-new Date(a.d)).slice(0,4);
+  let html=`<h4>Головні ризики</h4>`;
+  html+=`<p>Рівень (критично/середній/низький) — мітка зі знімка за охопленням і темою публікації, а не калібрована ймовірність кризи.</p><ul>`;
+  ranked.forEach(m=>{
+    const st=m.status?STATUS_LABEL[m.status]:"статус не зафіксовано в знімку";
+    html+=`<li><span class="sev ${m.sev}">${SEV[m.sev]}</span> ${fmt(m.d)} · <span class="tag">${CATS[m.cat]}</span> ${esc(m.what)} — ${st}. <a href="${m.url}" target="_blank" rel="noopener">${m.site}</a></li>`;
+  });
+  html+=`</ul>`;
+  const open=mentions.filter(m=>m.status==="open");
+  html+=open.length?`<p>Відкритих (без підтвердженого закриття) сигналів: ${open.length} — найсвіжіший: «${esc(open[0].what)}».</p>`:`<p>Жоден сигнал у знімку не позначений як відкритий; для решти статус просто невідомий, а не «вирішено».</p>`;
+  return html;
+}
+
+function reportTrending(){
+  const byCat=Object.keys(CATS).map(k=>[k,mentions.filter(m=>m.cat===k).length]).sort((a,b)=>b[1]-a[1]);
+  const win1From=shiftDate(SNAPSHOT_DATE,-30),win2From=shiftDate(SNAPSHOT_DATE,-60);
+  const last30=mentions.filter(m=>inWindow(m.d,win1From,SNAPSHOT_DATE));
+  const prev30=mentions.filter(m=>inWindow(m.d,win2From,win1From));
+  let html=`<h4>Теми, що набирають популярність</h4>`;
+  html+=`<p>Розподіл за темою в усьому знімку (${mentions.length} згад.): ${byCat.map(([k,v])=>`${CATS[k]} — ${v}`).join(", ")}.</p>`;
+  html+=`<p>${fmt(win1From)}–${fmt(SNAPSHOT_DATE)}: ${last30.length} згад. · попередні 30 днів: ${prev30.length} згад.</p>`;
+  html+=`<p><b>Даних замало для впевненого висновку про тренд.</b> Усього ${mentions.length} згадок за весь знімок, жодна тема не набирає ≥3 точки в межах одного 30-денного вікна. `;
+  if(last30.length>prev30.length)html+=`Що видно обережно: трохи більше сигналів за останній місяць (${last30.map(m=>CATS[m.cat]).join(", ")}) порівняно з попереднім — це може бути й випадковість на такій вибірці.`;
+  else if(last30.length===0)html+=`За останні 30 днів до знімка нових сигналів не було.`;
+  else html+=`Суттєвої зміни між вікнами не видно.`;
+  html+=`</p>`;
+  return html;
+}
+
+function reportCompetitors(){
+  const compRe=/kyivstar|київстар|lifecell|лайфсел/i;
+  const compMentions=mentions.filter(m=>compRe.test(m.what));
+  const compFiltered=filtered.filter(f=>compRe.test(f.why+" "+f.txt));
+  let html=`<h4>Що роблять конкуренти</h4>`;
+  if(compMentions.length===0){
+    html+=`<p><b>У цьому знімку немає підтверджених згадок про дії Kyivstar чи lifecell, повʼязаних із Vodafone.</b> Порожній результат тут — чесний наслідок того, що окремий конкурентний моніторинг не підключено, а не доказ бездіяльності конкурентів.</p>`;
+  }else{
+    html+=`<ul>`+compMentions.map(m=>`<li>${fmt(m.d)} · ${esc(m.what)} — <a href="${m.url}" target="_blank" rel="noopener">${m.site}</a></li>`).join("")+`</ul>`;
+  }
+  if(compFiltered.length){
+    html+=`<p>Відсіяно як шум під час перевірки: ${compFiltered.map(f=>`«${esc(f.txt)}» — ${f.why.toLowerCase()} (<a href="${f.url}" target="_blank" rel="noopener">джерело</a>)`).join("; ")}.</p>`;
+  }
+  html+=`<p>Джерело для системного відстеження Kyivstar/lifecell у цьому знімку не підключене — це відкрите завдання для наступної ітерації, а не виміряний нуль активності конкурентів.</p>`;
+  return html;
+}
+
+function reportFull(){
+  const from=shiftDate(SNAPSHOT_DATE,-1);
+  const recent=mentions.filter(m=>!m.dApprox&&inWindow(m.d,from,SNAPSHOT_DATE));
+  const latest=[...mentions].sort((a,b)=>new Date(b.d)-new Date(a.d))[0];
+  const weight={h:3,m:2,l:1};
+  const topRisks=[...mentions].sort((a,b)=>weight[b.sev]-weight[a.sev]||new Date(b.d)-new Date(a.d)).slice(0,2);
+  const open=mentions.filter(m=>m.status==="open");
+  const byCat=Object.keys(CATS).map(k=>[k,mentions.filter(m=>m.cat===k).length]).sort((a,b)=>b[1]-a[1]);
+  const compCount=mentions.filter(m=>/kyivstar|київстар|lifecell|лайфсел/i.test(m.what)).length;
+
+  let html=`<h4>Загальний звіт по дашборду</h4>`;
+  html+=`<p>Знімок від ${fmt(SNAPSHOT_DATE)}: ${mentions.length} негативних згадок, ще ${filtered.length} відсіяно як шум. Читається за дві хвилини; за деталями й цитатами — питайте про кожен пункт окремо.</p>`;
+
+  html+=`<p><b>За останню добу (${fmt(from)}–${fmt(SNAPSHOT_DATE)}):</b> `;
+  html+=recent.length===0
+    ?`нових сигналів не зафіксовано. Найсвіжіший у знімку — ${fmt(latest.d)}${latest.dApprox?" (дата приблизна)":""}: «${esc(latest.what)}» (${CATS[latest.cat]}), ${daysBefore(latest.d,SNAPSHOT_DATE)} дн. тому.`
+    :recent.map(m=>`<span class="sev ${m.sev}">${SEV[m.sev]}</span> ${CATS[m.cat]} — ${esc(m.what)}`).join("; ")+".";
+  html+=`</p>`;
+
+  html+=`<p><b>Головні ризики:</b> `+topRisks.map(m=>`<span class="sev ${m.sev}">${SEV[m.sev]}</span> ${CATS[m.cat]} (${fmt(m.d)}${m.status?", "+STATUS_LABEL[m.status]:", статус невідомий"})`).join("; ")+
+    (open.length?` — відкритих без підтвердженого закриття: ${open.length}.`:` — жоден не позначений як відкритий у знімку.`)+`</p>`;
+
+  html+=`<p><b>Теми:</b> ${byCat.map(([k,v])=>`${CATS[k]} — ${v}`).join(", ")}. На ${mentions.length} згадках загалом впевнений тренд по темах виділити не можна — вибірка замала.</p>`;
+
+  html+=`<p><b>Конкуренти:</b> ${compCount===0?"підтверджених згадок про Kyivstar/lifecell у знімку немає — окремий конкурентний моніторинг не підключено, це не вимірений нуль активності.":compCount+" підтверджені згадки."}</p>`;
+
+  html+=`<p class="note" style="margin:6px 0 0">Хочете глибше — запитайте прямо про «ризики», «тренди», «конкурентів» або «останню добу»: там повні цитати й посилання на джерела.</p>`;
+  return html;
+}
+
+function helpMessage(){
+  return `<h4>Що я вмію</h4><p>Я рахую звіти лише з цього знімка (<code>data.js</code>, ${mentions.length} негативних згадок + ${filtered.length} відсіяних, дата збору ${fmt(SNAPSHOT_DATE)}). Питайте вільним текстом — наприклад:</p>
+  <ul><li>«зроби звіт» / «що у нас на дашборді» — загальний огляд усього одразу;</li><li>що сталося за останню добу;</li><li>головні ризики;</li><li>теми, що набирають популярність;</li><li>що роблять конкуренти.</li></ul>
+  <p>Будь-яке інше формулювання теж отримає відповідь — за замовчуванням я даю загальний огляд дашборду, а не «не зрозумів». Я не прогнозую майбутнє, не бачу Threads/Instagram/X (не підключені в цьому знімку) і не вигадую цифр — там, де даних мало, кажу про це прямо.</p>`;
+}
+
+function classifyIntent(text){
+  const t=text.toLowerCase();
+  if(/(допомог|що ти вмі|команд|\bhelp\b)/.test(t))return "help";
+  if(/(добу|24\s*год|сьогодні|вчора|останн(ій|і)\s*(день|доба)|за день)/.test(t))return "lastday";
+  if(/(ризик|критичн|небезпе|загроз|найгірш)/.test(t))return "risks";
+  if(/(тренд|популярн|зроста|набира|\bтем[аи]\b)/.test(t))return "trending";
+  if(/(конкурент|kyivstar|київстар|lifecell|лайфсел)/.test(t))return "competitors";
+  return "full";
+}
+function answerFor(intent){
+  switch(intent){
+    case "lastday":return reportLastDay();
+    case "risks":return reportRisks();
+    case "trending":return reportTrending();
+    case "competitors":return reportCompetitors();
+    case "help":return helpMessage();
+    default:return reportFull();
+  }
+}
+
+const chatlog=document.getElementById("chatlog");
+function addMsg(role,html){
+  const div=document.createElement("div");
+  div.className="msg "+role;
+  div.innerHTML=html;
+  chatlog.appendChild(div);
+  chatlog.scrollTop=chatlog.scrollHeight;
+}
+function ask(text){
+  if(!text.trim())return;
+  addMsg("user",esc(text));
+  addMsg("bot",answerFor(classifyIntent(text),text));
+}
+document.getElementById("chatform").addEventListener("submit",e=>{
+  e.preventDefault();
+  const input=document.getElementById("chatInput");
+  ask(input.value);
+  input.value="";
+  input.focus();
+});
+const SUGGESTIONS=["Що сталося за останню добу?","Головні ризики","Теми, що набирають популярність","Що роблять конкуренти"];
+document.getElementById("suggest").innerHTML=SUGGESTIONS.map((label,i)=>`<button class="chip" type="button" data-i="${i}">${label}</button>`).join("");
+document.getElementById("suggest").addEventListener("click",e=>{
+  const b=e.target.closest(".chip");if(!b)return;
+  ask(SUGGESTIONS[+b.dataset.i]);
+});
+addMsg("bot",`Вітаю! Я — AI-аналітик цього дашборду (знімок від ${fmt(SNAPSHOT_DATE)}, ${mentions.length} негативних згадок, ${filtered.length} відсіяних). Напишіть будь-що своїми словами, наприклад «зроби звіт» — за замовчуванням я проаналізую весь дашборд і дам загальний огляд. Або оберіть готове питання нижче для конкретики.`);
 </script>
 </body>
 </html>
