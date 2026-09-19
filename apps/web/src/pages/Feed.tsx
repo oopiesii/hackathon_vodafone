@@ -2,6 +2,7 @@ import { TelegramEvidence, type TelegramDetail } from "../components/TelegramEvi
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Newspaper, RefreshCw, Search } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
+import { Link, useSearchParams } from "react-router";
 import { Alert, Badge, Card, Dialog, Empty, Field, PageHeader, Section, Stat } from "../components/ui";
 import { api, can, errorText, send, type Me } from "../lib/api";
 import { excerpt, formatDate, formatDateTime } from "../lib/format";
@@ -21,16 +22,25 @@ type Detail = { document: Item; telegram?:TelegramDetail; context: { text: strin
 export function Feed({ me, shared = false, workflowId = "1", title = "Стрічка", badge }: {
   me?: Me | undefined; shared?: boolean; workflowId?: string; title?: string; badge?: ReactNode;
 }) {
-  const [q, setQ] = useState(""), [topic, setTopic] = useState(""), [kind, setKind] = useState("");
-  const [decision, setDecision] = useState("accepted"), [before, setBefore] = useState(""), [workflow, setWorkflow] = useState(workflowId);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const q = searchParams.get("q") || "", topic = searchParams.get("topic") || "", kind = searchParams.get("kind") || "";
+  const decision = searchParams.get("decision") || "accepted", before = searchParams.get("before") || "";
+  const workflow = shared ? workflowId : searchParams.get("workflow_id") || workflowId;
+  const setField = (key: string) => (value: string) => {
+    setSearchParams(previous => { const next = new URLSearchParams(previous); value ? next.set(key, value) : next.delete(key); if (key !== "before") next.delete("before"); return next; });
+  };
+  const setQ = setField("q"), setTopic = setField("topic"), setKind = setField("kind"), setDecision = setField("decision"), setBefore = setField("before"), setWorkflow = setField("workflow_id");
+  const scoped = ["from", "until", "day", "source_id", "source_kind", "brand", "ids", "negative", "has_views", "has_reactions", "lag"].some(key => searchParams.has(key));
+  const dashboardBack = "/?" + new URLSearchParams({ workflow_id: workflow, window: searchParams.get("window") || "24h" });
   const [detail, setDetail] = useState<Detail | null>(null), [detailError, setDetailError] = useState("");
   const dialog = useRef<HTMLDialogElement>(null);
   const prefix = shared ? "/shared" : "";
-  const params = new URLSearchParams({ workflow_id: workflow, q, topic, kind, decision, before });
+  const params = new URLSearchParams(searchParams);
+  Object.entries({ workflow_id: workflow, q, topic, kind, decision, before }).forEach(([key, value]) => params.set(key, value));
   const feed = useQuery({ queryKey: ["feed", shared, params.toString()], queryFn: () => api<FeedData>(`${prefix}/feed?${params}`), refetchInterval: 30000 });
   const workspaces = useQuery({ queryKey: ["workflows"], queryFn: () => api<{ items: { id: string; name: string }[] }>("/workflows"), enabled: !shared });
   // Зміна будь-якого фільтра повертає до найновіших матеріалів.
-  const filter = (set: (value: string) => void) => (value: string) => { set(value); setBefore(""); };
+  const filter = (set: (value: string) => void) => (value: string) => set(value);
 
   async function open(id: string) {
     setDetailError("");
@@ -54,10 +64,12 @@ export function Feed({ me, shared = false, workflowId = "1", title = "Стріч
     <>
       <PageHeader
         title={<span className="row">{title}{badge}</span>}
-        description="Нормалізовані матеріали з дозволених джерел. Фільтр працює за правилами; оцінка кризи ще не реалізована."
+        description="Матеріали з дозволених джерел. Кожен запис має пояснення фільтра, контекст і посилання на оригінал."
+        breadcrumb={!shared && <Link className="btn btn-ghost btn-sm" to={dashboardBack}>До дашборда</Link>}
         actions={<button type="button" className="btn btn-outline" onClick={() => feed.refetch()} disabled={feed.isFetching}><RefreshCw size={16} aria-hidden="true" />Оновити</button>}
       />
 
+      {scoped && <div className="feed-scope"><Badge tone="info">Зріз із дашборда</Badge><span>{searchParams.get("from") ? formatDateTime(searchParams.get("from")) : "Обрані матеріали"}{searchParams.get("until") ? ` – ${formatDateTime(searchParams.get("until"))}` : ""}</span><button className="btn btn-ghost btn-sm" type="button" onClick={() => setSearchParams({ workflow_id: workflow, decision })}>Скинути зріз</button></div>}
       <div className="stats">
         <Stat label="Матеріалів за фільтрами">{data?.total.count ?? "—"}</Stat>
         <Stat label="Публікацій">{data ? counts.post ?? 0 : "—"}</Stat>
@@ -103,6 +115,7 @@ export function Feed({ me, shared = false, workflowId = "1", title = "Стріч
                 <Field label="Рішення">
                   <select value={decision} onChange={(e) => filter(setDecision)(e.target.value)}>
                     <option value="accepted">У стрічці</option>
+                    <option value="visible">Прийняті й на перевірці</option>
                     <option value="review">На перевірці</option>
                     <option value="rejected">Відсіяне</option>
                     <option value="all">Усе</option>

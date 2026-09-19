@@ -1,7 +1,7 @@
 /* Дизайн-токени: нейтральна палітра, одна шкала шрифтів, світла й темна теми. */
 :root{
   color-scheme:light;
-  --font-sans:"Inter Variable",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-sans:"Vodafone", "Inter Variable",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --font-mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
 
   --f-xs:12px; --f-sm:13px; --f-base:14px; --f-md:16px; --f-lg:18px; --f-xl:24px; --f-2xl:30px;

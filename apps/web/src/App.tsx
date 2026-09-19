@@ -4,6 +4,7 @@ import { Shell } from "./components/Shell";
 import { api, can, type Me } from "./lib/api";
 import { authClient } from "./lib/auth-client";
 import { AdminUsers } from "./pages/AdminUsers";
+import { Dashboard } from "./pages/Dashboard";
 import { Feed } from "./pages/Feed";
 import { Login } from "./pages/Login";
 import { TelegramAdmin } from './pages/telegram/TelegramAdmin';
@@ -38,7 +39,8 @@ function AuthenticatedApp() {
   return (
     <Shell me={me.data}>
       <Routes>
-        <Route path="/" element={<Feed me={me.data} />} />
+        <Route path="/" element={<Dashboard me={me.data} />} />
+        <Route path="/feed" element={<Feed me={me.data} />} />
         {can(me.data, "incident", "edit") && <Route path="/analysis" element={<Analysis />} />}
         {can(me.data, "incident", "edit") && <Route path="/inbox" element={<Incoming me={me.data} />} />}
         {can(me.data, "collector", "manage") && <Route path="/sources" element={<Sources />} />}
