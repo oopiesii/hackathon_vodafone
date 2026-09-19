@@ -8,6 +8,7 @@ import { telegramDetail } from '../lib/telegram-detail.js';
 
 export type ShareScope = {workflow_id:string;scope:'summary'|'posts'|'full';channel_ids:number[];topics:string[];name:string};
 const joins = ` from core.mentions m join core.sources s on s.id=m.source_id
+ left join core.action_status a on a.mention_id=m.id
  left join core.review_decisions r on r.mention_id=m.id and r.raw_version=m.raw_version`;
 export function selection(params:Record<string,string>, review=false, share?:ShareScope) {
   const args:unknown[]=[];
@@ -48,7 +49,7 @@ export async function getFeed(params:Record<string,string>,review=false,share?:S
   const pageargs=[...args];let pagesql=sql;
   if(params.before){if(!/^\d+$/.test(params.before))throw new HTTPException(400);pageargs.push(params.before);pagesql+=' and m.id<$'+pageargs.length;}
   const items=share?.scope==='summary' ? [] : await query(`select m.id,m.url source_url,m.published_at,m.category topic,m.severity,m.quote text,m.summary,
-    m.analyzed_at processed_at,m.fetched_at,m.edited_at,m.kind,m.reason,m.decision,m.brand,m.context_id,m.duplicate_of,
+    coalesce(a.status,'none') action,m.analyzed_at processed_at,m.fetched_at,m.edited_at,m.kind,m.reason,m.decision,m.brand,m.context_id,m.duplicate_of,
     r.decision manual_decision,s.kind source_kind,s.id channel_id,s.external_id username,coalesce(s.title,s.external_id) channel_title`+pagesql+' order by m.id desc limit 51',pageargs);
   return {items:items.slice(0,50),total:total[0],topics,kinds,next_before:items.length>50?items[49].id:null,summary_only:share?.scope==='summary',classifier:'rules-v2',telegram_enabled:module[0].enabled};
 }
@@ -59,7 +60,7 @@ export async function getDocument(id:string,review=false,share?:ShareScope) {
   const rows=await query('select s.workflow_id from core.mentions m join core.sources s on s.id=m.source_id where m.id=$1',[id]);
   if(!rows.length)throw new HTTPException(404);
   const {sql,args}=selection({workflow_id:String(rows[0].workflow_id),decision:'all'},review,share);
-  const fields=`select m.*,m.quote text,m.url source_url,m.category topic,m.analyzed_at processed_at,s.external_id username,s.kind source_kind,coalesce(s.title,s.external_id) channel_title,r.decision manual_decision`;
+  const fields=`select m.*,coalesce(a.status,'none') action,m.quote text,m.url source_url,m.category topic,m.analyzed_at processed_at,s.external_id username,s.kind source_kind,coalesce(s.title,s.external_id) channel_title,r.decision manual_decision`;
   const docs=await query(fields+sql+' and m.id=$'+(args.length+1),[...args,id]);
   if(!docs.length)throw new HTTPException(404);
   const doc=docs[0];let context=null;
