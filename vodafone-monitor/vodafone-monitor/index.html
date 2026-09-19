@@ -6,13 +6,13 @@
 <title>Монітор бренду Vodafone Україна</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --red:#E60000; --red-deep:#9E0000; --pink:#FFE1E1; --pink-2:#FFC2C2;
   --paper:#FFFFFF; --ink:#000000; --muted:#6B3A3A; --bg-a:#FFFFFF; --bg-b:#FFE9E9;
   --hi:#FFFFFF; --lo:#9E0000; --ok:#1E7A1E;
-  --pixel:"Pixelify Sans","Courier New",monospace;
+  --pixel:"Inter",Arial,sans-serif;
   --body:Verdana,Tahoma,"DejaVu Sans",Geneva,sans-serif;
 }
 @media (prefers-color-scheme: dark){
@@ -70,7 +70,7 @@ h1{font-family:var(--pixel);font-weight:700;font-size:clamp(28px,5vw,52px);line-
 .crit .bar{background:repeating-linear-gradient(45deg,var(--red) 0 12px,#000 12px 24px)}
 .crit .bar b{background:var(--red);padding:0 6px}
 .blink{animation:bl 1s steps(1) infinite}@keyframes bl{50%{opacity:0}}
-.critgrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px}
+.critgrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;align-items:start}
 .bignum{font-family:var(--pixel);font-size:clamp(56px,9vw,104px);line-height:.9;color:var(--red);margin:4px 0}
 .bignum small{font-size:.3em;color:var(--ink);display:block;margin-top:6px;line-height:1.2}
 .crit h2{font-family:var(--pixel);font-size:22px;margin:0 0 6px;line-height:1.2}
@@ -79,17 +79,28 @@ h1{font-family:var(--pixel);font-weight:700;font-size:clamp(28px,5vw,52px);line-
 .reacts{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0}
 .reacts span{border:1px solid var(--pink-2);padding:0 6px;font-size:13px}
 .reacts span.neg{border-color:var(--red);background:var(--pink);font-weight:700}
-.todo{background:var(--pink);border:2px dashed var(--red);padding:10px 12px}
-.todo h3{font-family:var(--pixel);font-size:17px;margin:0 0 6px;color:var(--red)}
+.reacts-spoiler{margin:6px 0;border:2px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);background:var(--paper)}
+.reacts-spoiler summary{cursor:pointer;list-style:none;font-family:var(--pixel);font-size:13px;color:var(--red);
+  padding:5px 10px;background:var(--pink)}
+.reacts-spoiler summary::-webkit-details-marker{display:none}
+.reacts-spoiler summary::before{content:"▶ "}
+.reacts-spoiler[open] summary::before{content:"▼ "}
+.reacts-spoiler[open] summary{border-bottom:1px dashed var(--red)}
+.reacts-spoiler>.reacts,.reacts-spoiler>.note{padding-left:10px;padding-right:10px}
+.reacts-spoiler>.reacts{margin-top:8px}
+.todo,.now{background:var(--pink);border:2px dashed var(--red);padding:10px 12px}
+.now{margin-top:14px}
+.todo h3,.now h3{font-family:var(--pixel);font-size:17px;margin:0 0 6px;color:var(--red)}
 .todo ol{margin:0;padding-left:20px}.todo li{margin-bottom:4px}
-.now{margin-top:14px;border-top:2px solid var(--red);padding-top:10px;font-size:13px}
-.now b{font-family:var(--pixel);font-size:15px;color:var(--red)}
+.now p{margin:4px 0;font-size:13px}
 .status{display:inline-block;font-size:12px;padding:0 6px;border:1px solid}
 .status.done{color:var(--ok);border-color:var(--ok)} .status.act{color:#fff;background:var(--red);border-color:var(--red)}
 
 /* stats */
 .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:22px}
-.stat{background:var(--paper);border:2px solid var(--red);padding:10px 12px}
+.stat{background:var(--paper);border:2px solid var(--red);padding:10px 12px;
+  font:inherit;color:inherit;text-align:left;display:block;width:100%;cursor:pointer}
+.stat:hover{background:var(--pink)}
 .stat .n{font-family:var(--pixel);font-size:40px;line-height:1;color:var(--red)}
 .stat .l{font-size:12px;color:var(--muted)}
 .charts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.6fr);gap:18px}
@@ -107,8 +118,9 @@ h1{font-family:var(--pixel);font-weight:700;font-size:clamp(28px,5vw,52px);line-
 .chip[aria-pressed="true"]{background:var(--red);color:#fff;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
 .filterbar{display:flex;flex-wrap:wrap;gap:8px 20px;margin-bottom:12px}
 .chipgroup{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.chipgroup-break{flex-basis:100%}
 .chipgroup-label{font-family:var(--pixel);font-size:12px;color:var(--muted);white-space:nowrap}
-table{width:100%;border-collapse:collapse;font-size:13px;min-width:720px}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:800px}
 th{font-family:var(--pixel);font-weight:600;font-size:14px;text-align:left;background:var(--red);color:#fff;padding:6px 8px}
 td{padding:7px 8px;border-bottom:1px dotted var(--red);vertical-align:top}
 tr:nth-child(even) td{background:var(--pink)}
@@ -213,11 +225,15 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
         <dt>Відлуння</dt><dd><a href="https://thepage.ua/ua/news/problemi-zi-zvyazkom-vodafone-pislya-ataki-na-kiyiv-2-lipnya-2026-sho-vidomo" target="_blank" rel="noopener">The Page</a> та <a href="https://www.ukr.net/news/details/technologies/118279815.html" target="_blank" rel="noopener">UKR.NET</a> того ж дня</dd>
         <dt>Статус</dt><dd><span class="status done">Вирішено</span></dd>
       </dl>
-      <div class="reacts" aria-label="Реакції під постом">
-        <span>❤ 93</span><span>🙏 50</span><span>❤‍🔥 6</span><span>👍 5</span>
-        <span class="neg">🤣 4</span><span class="neg">😁 3</span><span class="neg">💔 2</span><span>🤩 1</span><span class="neg">😈 1</span>
-      </div>
-      <p class="note">Негативні/іронічні реакції: 10 із 165 (6%). Аудиторія переважно підтримує — причина зовнішня (обстріл), а не провал оператора. Тон відповіді має це враховувати.</p>
+       <p class="note">Негативні/іронічні реакції: 10 із 165 (6%).</p>
+      <details class="reacts-spoiler">
+        <summary>Показати реакції та деталі</summary>
+        <div class="reacts" aria-label="Реакції під постом">
+          <span>❤ 93</span><span>🙏 50</span><span>❤‍🔥 6</span><span>👍 5</span>
+          <span class="neg">🤣 4</span><span class="neg">😁 3</span><span class="neg">💔 2</span><span>🤩 1</span><span class="neg">😈 1</span>
+        </div>
+        <p class="note">Аудиторія переважно підтримує — причина зовнішня (обстріл), а не провал оператора. Тон відповіді має це враховувати.</p>
+      </details>
     </div>
     <div>
       <div class="todo">
@@ -230,9 +246,10 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
         </ol>
       </div>
       <div class="now">
-        <b>Що зараз (19.09):</b> активних масових збоїв у знімку не виявлено. Найсвіжіший мережевий сигнал —
-        <a href="https://www.vodafone.ua/news" target="_blank" rel="noopener">демонтаж базової станції в Обухові</a> на вимогу орендодавця (16.09). <span class="status act">Відкрито</span>
-        Очікуйте локальних скарг на покриття з Обухова — варто підготувати відповідь заздалегідь.
+        <h3>Що зараз (19.09)</h3>
+        <p>Активних масових збоїв у знімку не виявлено. Найсвіжіший мережевий сигнал —
+        <a href="https://www.vodafone.ua/news" target="_blank" rel="noopener">демонтаж базової станції в Обухові</a> на вимогу орендодавця (16.09). <span class="status act">Відкрито</span></p>
+        <p>Очікуйте локальних скарг на покриття з Обухова — варто підготувати відповідь заздалегідь.</p>
       </div>
     </div>
   </div>
@@ -261,13 +278,19 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
       <div class="chipgroup"><span class="chipgroup-label">Фільтр за темою:</span>
         <div class="chips" id="chips" role="group" aria-label="Фільтр за темою"></div>
       </div>
+      <div class="chipgroup"><span class="chipgroup-label">Фільтр за містом:</span>
+        <div class="chips" id="cityChips" role="group" aria-label="Фільтр за містом"></div>
+      </div>
+      <div class="chipgroup chipgroup-break"><span class="chipgroup-label">Фільтр за критичністю:</span>
+        <div class="chips" id="sevChips" role="group" aria-label="Фільтр за критичністю"></div>
+      </div>
       <div class="chipgroup"><span class="chipgroup-label">Сортувати за:</span>
         <div class="chips" id="sortChips" role="group" aria-label="Сортування"></div>
       </div>
     </div>
     <div class="scroll"><table>
       <thead><tr>
-        <th>Дата</th><th>Рівень</th><th>Тема</th><th>Що сталося</th><th>Джерело</th>
+        <th>Дата</th><th>Критичність</th><th>Тема</th><th>Місто</th><th>Що сталося</th><th>Джерело</th>
       </tr></thead>
       <tbody id="rows"></tbody>
     </table></div>
@@ -275,8 +298,8 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
 </section>
 
 <!-- FILTERED -->
-<section class="win">
-  <div class="bar"><span>Відсіяно як шум — і чому</span></div>
+<section class="win" aria-labelledby="filteredTitle">
+  <div class="bar"><span id="filteredTitle">Відсіяно як шум — і чому</span></div>
   <div class="pane">
     <p class="note" style="margin-top:0">Кожна з цих згадок пройшла б простий фільтр «Vodafone + збій/негатив». Без перевірки вони дали б хибну тривогу.</p>
     <ul class="filt" id="filtered"></ul>
@@ -313,7 +336,7 @@ footer{text-align:center;font-family:var(--pixel);font-size:13px;color:var(--mut
     <div>
       <h3>Як згадка стає тривогою</h3>
       <ul>
-        <li>Відсікаємо тезок: у тексті має бути Україна, українське місто, 111, My Vodafone або кирилиця «Водафон».</li>
+        <li>Відсікаємо тези: у тексті має бути Україна, українське місто, 111, My Vodafone або кирилиця «Водафон».</li>
         <li>Відсікаємо старе: беремо дату з самої сторінки, а не з пошуковика.</li>
         <li>Ловимо згадки без назви бренду: «оранжевий… ні, червоний оператор», «050/066/095/099 не ловить», «мій оператор ліг».</li>
         <li>Тривога: ≥3× медіани переглядів <em>або</em> <span class="asm">припущення: ≥10 скарг з одного міста за 15 хв. Поріг треба підібрати на історії збоїв 2024–2026.</span></li>
@@ -359,17 +382,22 @@ document.getElementById("tick").textContent=mentions.map(m=>`▶ ${fmt(m.d)} · 
 const high=mentions.filter(m=>m.sev==="h").length;
 const total=mentions.length+filtered.length;
 document.getElementById("stats").innerHTML=[
- [mentions.length,"негативних згадок у знімку"],
- [high,"критична (охоплення ≥3× норми)"],
- [Math.round(filtered.length/total*100)+"%","сирих збігів відсіяно як шум"],
- ["4,0×","пікове охоплення посту"]
-].map(([n,l])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+ [mentions.length,"негативних згадок у знімку","listTitle"],
+ [high,"критична (охоплення ≥3× норми)","listTitle"],
+ [Math.round(filtered.length/total*100)+"%","сирих збігів відсіяно як шум","filteredTitle"],
+ ["4,0×","пікове охоплення посту","critTitle"]
+].map(([n,l,t])=>`<button type="button" class="stat" data-target="${t}"><div class="n">${n}</div><div class="l">${l}</div></button>`).join("");
+document.getElementById("stats").addEventListener("click",e=>{
+  const b=e.target.closest(".stat");if(!b)return;
+  const el=document.getElementById(b.dataset.target);if(!el)return;
+  el.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
+});
 
 // donut
 function donut(el,leg,data,colors){
   const tot=data.reduce((a,[,v])=>a+v,0),R=54,C=2*Math.PI*R;let off=0;
   const segs=data.filter(([,v])=>v>0).map(([k,v])=>{const len=v/tot*C;const s=`<circle r="${R}" cx="70" cy="70" fill="none" stroke="${colors[k]}" stroke-width="26" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"/>`;off+=len;return s}).join("");
-  document.getElementById(el).innerHTML=`<svg viewBox="0 0 140 140" width="160" height="160" role="img" aria-label="Кругова діаграма"><circle r="${R}" cx="70" cy="70" fill="none" stroke="var(--red)" stroke-width="28"/><circle r="${R}" cx="70" cy="70" fill="none" stroke="var(--paper)" stroke-width="24"/>${segs}<text x="70" y="78" text-anchor="middle" font-family="Pixelify Sans, monospace" font-size="26" fill="var(--ink)">${tot}</text></svg>`;
+  document.getElementById(el).innerHTML=`<svg viewBox="0 0 140 140" width="160" height="160" role="img" aria-label="Кругова діаграма"><circle r="${R}" cx="70" cy="70" fill="none" stroke="var(--red)" stroke-width="28"/><circle r="${R}" cx="70" cy="70" fill="none" stroke="var(--paper)" stroke-width="24"/>${segs}<text x="70" y="78" text-anchor="middle" font-family="Inter, sans-serif" font-size="26" fill="var(--ink)">${tot}</text></svg>`;
   document.getElementById(leg).innerHTML=data.map(([k,v])=>`<li><i style="background:${colors[k]}"></i>${CATS[k]||k} — ${v}${v===0?" (не підключено)":""}</li>`).join("");
 }
 const byCat={};mentions.forEach(m=>byCat[m.cat]=(byCat[m.cat]||0)+1);
@@ -384,7 +412,7 @@ donut("donutSrc","legSrc",["Telegram","ЗМІ","Сайт Vodafone","Threads","In
   let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Перегляди постів Telegram-каналу, пік на пості 1429">`;
   views.forEach(([id,v],i)=>{const hot=v>=MEDIAN*3;const x=pad+i*bw;
     s+=`<a href="https://t.me/VFUkraine/${id}" target="_blank"><rect x="${x+1}" y="${y(v)}" width="${bw-3}" height="${H-pad-y(v)}" fill="${hot?"var(--red)":"var(--pink-2)"}" stroke="${hot?"var(--ink)":"none"}"><title>Пост ${id}: ${v} тис. переглядів</title></rect></a>`;
-    if(hot)s+=`<text x="${x+bw/2}" y="${y(v)-5}" text-anchor="middle" font-family="Pixelify Sans, monospace" font-size="13" fill="var(--red)">29,6K</text>`});
+    if(hot)s+=`<text x="${x+bw/2}" y="${y(v)-5}" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" fill="var(--red)">29,6K</text>`});
   s+=`<line x1="${pad}" x2="${W-pad}" y1="${y(MEDIAN)}" y2="${y(MEDIAN)}" stroke="var(--ink)" stroke-dasharray="4 3"/>`;
   s+=`<text x="${W-pad}" y="${y(MEDIAN)-4}" text-anchor="end" font-size="11" fill="var(--ink)">медіана 7,4K</text>`;
   s+=`<line x1="${pad}" x2="${W-pad}" y1="${H-pad}" y2="${H-pad}" stroke="var(--red)" stroke-width="2"/>`;
@@ -393,9 +421,10 @@ donut("donutSrc","legSrc",["Telegram","ЗМІ","Сайт Vodafone","Threads","In
 })();
 
 // list + chips
-let active="all";
-const SEV={h:"Критично",m:"Середній",l:"Низький"};
+let active="all",activeCity="all",activeSev="all";
+const SEV={h:"Висока",m:"Середня",l:"Низька"};
 const SEV_W={h:3,m:2,l:1};
+const NO_CITY="__none__";
 const SORT_DEFAULT_DIR={d:"desc",sev:"desc",cat:"asc"};
 let sortState={key:"d",dir:"desc"};
 function sortCompare(key,dir){
@@ -411,16 +440,21 @@ function sortCompare(key,dir){
   };
 }
 function render(){
-  const list=mentions.filter(m=>active==="all"||m.cat===active).sort(sortCompare(sortState.key,sortState.dir));
+  const list=mentions.filter(m=>
+    (active==="all"||m.cat===active)&&
+    (activeCity==="all"||(activeCity===NO_CITY?!m.city:m.city===activeCity))&&
+    (activeSev==="all"||m.sev===activeSev)
+  ).sort(sortCompare(sortState.key,sortState.dir));
   document.getElementById("rows").innerHTML=list.length?list.map(m=>`<tr>
     <td>${m.dApprox?"≈ ":""}${fmt(m.d)}</td>
     <td><span class="sev ${m.sev}">${SEV[m.sev]}</span></td>
     <td><span class="tag">${CATS[m.cat]}</span></td>
+    <td>${m.city?esc(m.city):"—"}</td>
     <td class="what">${esc(m.what)}</td>
     <td><a href="${m.url}" target="_blank" rel="noopener">${m.site}</a><br><span class="note">${m.src}</span></td></tr>`).join("")
-    :`<tr><td colspan="5">У цій темі згадок немає. Оберіть «Усі», щоб побачити решту.</td></tr>`;
+    :`<tr><td colspan="6">За цими фільтрами згадок немає. Скиньте фільтр(и) на «Усі», щоб побачити решту.</td></tr>`;
 }
-const SORT_LABELS={d:"Дата",sev:"Рівень",cat:"Тема"};
+const SORT_LABELS={d:"Дата",sev:"Критичність",cat:"Тема"};
 const sortChips=document.getElementById("sortChips");
 function renderSortChips(){
   sortChips.innerHTML=Object.keys(SORT_LABELS).map(k=>{
@@ -442,6 +476,23 @@ const chips=document.getElementById("chips");
 chips.innerHTML=chipData.map(([k,l])=>`<button class="chip" type="button" data-k="${k}" aria-pressed="${k==="all"}">${l}</button>`).join("");
 chips.addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;active=b.dataset.k;
   chips.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",c===b));render()});
+
+const byCity={};mentions.forEach(m=>{const k=m.city||NO_CITY;byCity[k]=(byCity[k]||0)+1});
+const cityKeys=Object.keys(byCity).filter(k=>k!==NO_CITY).sort((a,b)=>a.localeCompare(b,"uk"));
+const cityData=[["all","Усі ("+mentions.length+")"],...cityKeys.map(k=>[k,`${k} (${byCity[k]})`]),
+  ...(byCity[NO_CITY]?[[NO_CITY,`Без міста (${byCity[NO_CITY]})`]]:[])];
+const cityChips=document.getElementById("cityChips");
+cityChips.innerHTML=cityData.map(([k,l])=>`<button class="chip" type="button" data-k="${k}" aria-pressed="${k==="all"}">${l}</button>`).join("");
+cityChips.addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;activeCity=b.dataset.k;
+  cityChips.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",c===b));render()});
+
+const bySev={};mentions.forEach(m=>bySev[m.sev]=(bySev[m.sev]||0)+1);
+const sevData=[["all","Усі ("+mentions.length+")"],...Object.keys(SEV).map(k=>[k,`${SEV[k]} (${bySev[k]||0})`])];
+const sevChips=document.getElementById("sevChips");
+sevChips.innerHTML=sevData.map(([k,l])=>`<button class="chip" type="button" data-k="${k}" aria-pressed="${k==="all"}">${l}</button>`).join("");
+sevChips.addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;activeSev=b.dataset.k;
+  sevChips.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",c===b));render()});
+
 render();
 
 document.getElementById("filtered").innerHTML=filtered.map(f=>`<li><b>${f.why}.</b> ${esc(f.txt)} <a href="${f.url}" target="_blank" rel="noopener">джерело</a></li>`).join("");
@@ -497,7 +548,7 @@ function reportRisks(){
   const weight={h:3,m:2,l:1};
   const ranked=[...mentions].sort((a,b)=>weight[b.sev]-weight[a.sev]||new Date(b.d)-new Date(a.d)).slice(0,4);
   let html=`<h4>Головні ризики</h4>`;
-  html+=`<p>Рівень (критично/середній/низький) — мітка зі знімка за охопленням і темою публікації, а не калібрована ймовірність кризи.</p><ul>`;
+  html+=`<p>Критичність (висока/середня/низька) — мітка зі знімка за охопленням і темою публікації, а не калібрована ймовірність кризи.</p><ul>`;
   ranked.forEach(m=>{
     const st=m.status?STATUS_LABEL[m.status]:"статус не зафіксовано в знімку";
     html+=`<li><span class="sev ${m.sev}">${SEV[m.sev]}</span> ${fmt(m.d)} · <span class="tag">${CATS[m.cat]}</span> ${esc(m.what)} — ${st}. <a href="${m.url}" target="_blank" rel="noopener">${m.site}</a></li>`;
