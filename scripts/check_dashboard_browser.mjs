@@ -18,16 +18,17 @@ const server = createServer(async (req,res) => {
   const user={...adminUser,role:scenario==='viewer'?'viewer':'admin'};
   if(path==='/api/auth/get-session') data={session:{id:'synthetic',userId:'test',expiresAt:'2099-01-01T00:00:00Z'},user};
   if(path==='/api/me') data={user,permissions:scenario==='viewer'?{incident:['view']}:{incident:['view','edit'],collector:['read','manage'],user:['list','create']}};
-  if(path==='/api/admin/refresh') data={requests:scenario==='refresh'?[{id:'1',workflow_id:'1',service:'telegram',status:'running',requested_at:dashboard.end,started_at:dashboard.end,completed_at:null,detail:'Синтетична перевірка: збирач прийняв запит.'},{id:'2',workflow_id:'1',service:'rss',status:'deferred',requested_at:dashboard.end,started_at:dashboard.end,completed_at:dashboard.end,detail:'Очікування лімітів джерела збережено.'}]:[]};
-  if(path==='/api/admin/state') data={telegram_enabled:true,accounts:[{id:1,label:'Демо',credentials_ready:false,status:'waiting'}],channels:[],services:[]};
+  if(path==='/api/admin/refresh') data={requests:['refresh','stale-refresh'].includes(scenario)?[{id:'1',workflow_id:'1',service:'telegram',status:'running',stale:scenario==='stale-refresh',collector_online:scenario!=='stale-refresh',requested_at:dashboard.end,started_at:dashboard.end,completed_at:null,detail:scenario==='stale-refresh'?'Немає свіжого сигналу збирача. Запит залишається в черзі; оновлення не підтверджено.':'Синтетична перевірка: збирач прийняв запит.'},{id:'2',workflow_id:'1',service:'rss',status:'deferred',requested_at:dashboard.end,started_at:dashboard.end,completed_at:dashboard.end,detail:'Очікування лімітів джерела збережено.'}]:[]};
+  if(path==='/api/admin/state') data={telegram_enabled:true,accounts:[{id:1,label:'Демо',credentials_ready:false,status:'waiting'}],channels:[],services:[],threads:[],audit:[],memberships:[],shares:[],workflows:[{id:1,name:'Синтетичний workflow',enabled:true,comments_enabled:true,filter_spam:true,poll_seconds:30,history_days:7}]};
   if(path==='/api/admin/rss') data={enabled:true,items:[],service:null,workflows:[{id:'1',name:'Демонстрація',enabled:true}]};
-  if(path==='/api/admin/ai/status') data={heartbeat_at:dashboard.end,mode:'waiting_key',model:null,last_error:null,limit_per_hour:60,items_last_hour:0,sources:[{id:'1',kind:'telegram',title:'Синтетичний Telegram',llm_allowed:false,llm_basis:null,rights_status:null},{id:'2',kind:'rss',title:'Дозволений RSS',llm_allowed:true,llm_basis:'Синтетична підстава',rights_status:'allowed'},{id:'3',kind:'rss',title:'Заблокований RSS',llm_allowed:false,llm_basis:null,rights_status:'blocked'}]};
+  if(path==='/api/admin/ai/status') data={heartbeat_at:scenario==='stale-ai'?'2020-01-01T00:00:00Z':new Date().toISOString(),mode:scenario==='stale-ai'?'active':'waiting_key',model:null,last_error:null,limit_per_hour:60,items_last_hour:0,sources:[{id:'1',kind:'telegram',title:'Синтетичний Telegram',llm_allowed:false,llm_basis:null,rights_status:null},{id:'2',kind:'rss',title:'Дозволений RSS',llm_allowed:true,llm_basis:'Синтетична підстава',rights_status:'allowed'},{id:'3',kind:'rss',title:'Заблокований RSS',llm_allowed:false,llm_basis:null,rights_status:'blocked'}]};
   if(path==='/api/workflows') data={items:[{id:'1',name:'Vodafone та український телеком'}]};
   const item={id:'1',source_kind:'telegram',text:'Синтетичний приклад: перевірка матеріалу Vodafone.',summary:'',source_url:'https://example.test/evidence',published_at:dashboard.end,fetched_at:dashboard.end,processed_at:dashboard.end,edited_at:null,kind:'post',topic:'network',channel_title:'Синтетичне джерело',reason:'Тестовий матеріал',duplicate_of:null,context_id:null,manual_decision:null};
   if(path==='/api/feed') data={items:[item],total:{count:1,last_processed_at:dashboard.end},kinds:[{kind:'post',count:1}],topics:[{topic:'network',count:1}],next_before:null,summary_only:false,telegram_enabled:true};
   if(path==='/api/documents/1') data={document:item,context:null};
   if(path==='/api/inbox') data={items:[],counts:[],sources:[],next_before:null};
   if(path==='/api/dashboard') {
+   if(url.searchParams.get('window')==='7d'&&process.argv.includes('--flow'))await new Promise(r=>setTimeout(r,750));
    if(scenario==='error'){res.writeHead(503,{'content-type':'application/json'});res.end(JSON.stringify({error:'unavailable'}));return;}
    if(scenario==='loading'){await new Promise(r=>setTimeout(r,5000));}
    data=structuredClone(dashboard);
@@ -55,7 +56,7 @@ for(const scenario of scenarios) for(const width of [1440,768,390]) for(const th
  await page.goto(`http://127.0.0.1:${server.address().port}/`,{waitUntil:'domcontentloaded'});
  if(scenario==='loading') await page.getByText('Збираємо показники').waitFor(); else if(scenario==='error') await page.getByText('Не вдалося оновити дашборд.').waitFor(); else await page.getByRole('link',{name:/Перевірити докази/}).waitFor();
  await page.evaluate(()=>document.fonts.ready);
- if(scenario==='refresh') await page.getByText('Перебіг збору',{exact:true}).click();
+ if(['refresh','stale-refresh'].includes(scenario)) await page.getByText('Перебіг збору',{exact:true}).click();
  const issues=await page.evaluate(()=>{
   const result=[], styles=getComputedStyle(document.documentElement), scale=new Set(['xs','sm','base','md','lg','xl','2xl'].map(s=>parseFloat(styles.getPropertyValue('--f-'+s))));
   const vw=document.documentElement.clientWidth;
@@ -90,8 +91,11 @@ for(const scenario of scenarios) for(const width of [1440,768,390]) for(const th
   await page.getByRole('button',{name:'Закрити',exact:true}).click();
  }
  if(scenario==='populated'&&process.argv.includes('--flow')) {
+  const switched=page.waitForResponse(r=>r.url().includes('/api/dashboard?')&&r.url().includes('window=7d'));
   await page.getByRole('button',{name:'7 днів',exact:true}).click();
-  await page.waitForResponse(r=>r.url().includes('/api/dashboard?')&&r.url().includes('window=7d'));
+  await page.getByText('Збираємо показники').waitFor();
+  if(await page.locator('.metric-tile').count())issues.push('previous window remains under new filter');
+  await switched;
   const request=page.waitForRequest(r=>r.url().includes('/api/feed?'));
   await page.locator('.metric-tile').first().click();
   const url=new URL((await request).url());
@@ -106,9 +110,10 @@ for(const scenario of scenarios) for(const width of [1440,768,390]) for(const th
   if(new URL(page.url()).searchParams.get('window')!=='7d')issues.push('back window lost');
  }
 
- if(scenario==='populated'&&process.argv.includes('--slots')) {
+ if((scenario==='populated'&&process.argv.includes('--slots'))||scenario==='stale-ai') {
   await page.goto(`http://127.0.0.1:${server.address().port}/sources`);
   await page.getByRole('heading',{name:'AI-аналітик',exact:true}).waitFor();
+  if(scenario==='stale-ai'){await page.getByText('Немає свіжого сигналу',{exact:true}).waitFor();if(await page.locator('.badge.success').filter({hasText:'AI працює'}).count())issues.push('stale heartbeat shown active');}
   await page.getByText('Дозволи джерел · 1 увімкнено').click();
   if(!await page.getByRole('switch',{name:'AI: Заблокований RSS',exact:true}).isDisabled())issues.push('blocked source enabled in UI');
   await page.getByRole('switch',{name:'AI: Синтетичний Telegram',exact:true}).click();
@@ -118,6 +123,14 @@ for(const scenario of scenarios) for(const width of [1440,768,390]) for(const th
   await page.evaluate(()=>window.scrollTo(0,0));
   await page.screenshot({path:join(out,`sources-${width}-${theme}.png`),fullPage:true});
  }
+ if(scenario==='populated'&&process.argv.includes('--tabs')){
+  await page.goto(`http://127.0.0.1:${server.address().port}/sources/telegram?tab=workflows`);
+  await page.getByRole('heading',{name:'Параметри поточного workflow'}).waitFor();
+  const hidden=await page.locator('.tabs').evaluate(el=>{const a=el.getBoundingClientRect(),b=el.querySelector('[aria-pressed="true"]').getBoundingClientRect();return b.left<a.left-1||b.right>a.right+1;});
+  if(hidden)issues.push('selected mobile tab offscreen');
+  await page.screenshot({path:join(out,`tabs-${width}-${theme}.png`),fullPage:true});
+ }
+ if(scenario==='stale-refresh' && !await page.getByRole('button',{name:'Перевірити оновлення',exact:true}).isEnabled())issues.push('stale refresh locks control');
  reports.push({scenario,width,theme,issues:[...issues,...errors]});
  console.log(scenario,width,theme,JSON.stringify([...issues,...errors]));
  await context.close();

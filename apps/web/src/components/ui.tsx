@@ -1,5 +1,5 @@
 import { CircleAlert, CircleCheck, Info, X } from "lucide-react";
-import type { ReactNode, Ref } from "react";
+import { useEffect, useRef, type ReactNode, type Ref } from "react";
 import type { Tone } from "../lib/labels";
 
 export function PageHeader({ title, description, actions, breadcrumb }: {
@@ -90,8 +90,24 @@ export function Switch({ checked, onChange, disabled, label, ariaLabel }: {
 export function Tabs<T extends string>({ items, value, onChange, label }: {
   items: { value: T; label: string; count?: number | string | undefined }[]; value: T; onChange: (next: T) => void; label: string;
 }) {
+  const strip = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const element = strip.current;
+    if (!element) return;
+    const reveal = () => {
+      const selected = element.querySelector<HTMLButtonElement>('[aria-pressed="true"]');
+      if (!selected) return;
+      const outer = element.getBoundingClientRect(), inner = selected.getBoundingClientRect();
+      if (inner.left < outer.left) element.scrollLeft += inner.left - outer.left;
+      else if (inner.right > outer.right) element.scrollLeft += inner.right - outer.right;
+    };
+    reveal();
+    const observer = new ResizeObserver(reveal);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [value]);
   return (
-    <div className="tabs" role="group" aria-label={label}>
+    <div ref={strip} className="tabs" role="group" aria-label={label}>
       {items.map((item) => (
         <button key={item.value} type="button" className="tab" aria-pressed={item.value === value} onClick={() => onChange(item.value)}>
           {item.label}

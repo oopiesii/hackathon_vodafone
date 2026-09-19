@@ -1,5 +1,5 @@
 import type { DashboardResponse, DashboardWindow } from "@ufv/shared/dashboard";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowUpRight, ShieldCheck, ShieldAlert } from "lucide-react";
 import { Link, useSearchParams } from "react-router";
 import { Alert, Badge, Card, PageHeader, Tabs } from "../components/ui";
@@ -23,7 +23,7 @@ export function Dashboard({ me }: { me: Me | undefined }) {
   const value = params.get("window");
   const window: DashboardWindow = value === "7d" || value === "30d" ? value : "24h";
   const workflow = params.get("workflow_id") || "1";
-  const query = useQuery({ queryKey: ["dashboard", workflow, window], queryFn: () => api<DashboardResponse>(`/dashboard?${new URLSearchParams({ workflow_id: workflow, window })}`), placeholderData: keepPreviousData, refetchInterval: q => q.state.data?.aggregation?.complete === false ? 3000 : 300000 });
+  const query = useQuery({ queryKey: ["dashboard", workflow, window, me?.user.id, me?.user.role], queryFn: () => api<DashboardResponse>(`/dashboard?${new URLSearchParams({ workflow_id: workflow, window })}`), refetchInterval: q => q.state.data?.aggregation?.complete === false ? 3000 : 300000 });
   const workflows = useQuery({ queryKey: ["workflows"], queryFn: () => api<{ items: { id: string; name: string }[] }>("/workflows") });
   const data = query.data;
   const calculating = data?.aggregation?.complete === false;
@@ -56,7 +56,7 @@ export function Dashboard({ me }: { me: Me | undefined }) {
         <Card className="span-4" title="Реакції" actions={<Badge title={data.reactions.note}>Евристика</Badge>} footer={<span className="note">{calculating ? "Очікуємо повного зрізу" : `${quantity(data.reactions.observed_items, "матеріал", "матеріали", "матеріалів")} із реакціями · сумні окремо`}</span>}>{calculating ? waiting : <ShareBar negative={data.reactions.negative + data.reactions.ironic} sad={data.reactions.sad} positive={data.reactions.positive} href={data.reactions.href} />}</Card>
         <Card className="span-4" title="Джерела згадок">{calculating ? waiting : <BarList data={data.sources.slice(0, 5).map(s => ({ id: s.id, label: s.title, value: s.count, href: s.href }))} />}</Card>
         <Card className="span-4" title="Поширення" actions={<Badge title="Перепублікації не доводять незалежність джерел.">Збіги змісту</Badge>}>
-          {calculating ? waiting : data.spread.length ? <div className="spread-list">{data.spread.slice(0, 3).map(s => <Link key={s.id} to={s.href}><strong>{quantity(s.count, "поширення", "поширення", "поширень")}</strong><span>{quantity(s.source_count, "джерело", "джерела", "джерел")}</span><small>{s.third_repost_seconds === null ? "Третю перепублікацію не зафіксовано" : `До 3-го поширення: ${count(s.third_repost_seconds / 60)} хв`}</small></Link>)}</div> : <div className="chart-no-data">Збігів змісту у вибраному вікні немає</div>}
+          {calculating ? waiting : data.aggregated ? <div className="chart-no-data">Окремі поширення доступні у вікнах 24 год і 7 днів</div> : data.spread.length ? <div className="spread-list">{data.spread.slice(0, 3).map(s => <Link key={s.id} to={s.href}><strong>{quantity(s.count, "поширення", "поширення", "поширень")}</strong><span>{quantity(s.source_count, "джерело", "джерела", "джерел")}</span><small>{s.third_repost_seconds === null ? "Третю перепублікацію не зафіксовано" : `До 3-го поширення: ${count(s.third_repost_seconds / 60)} хв`}</small></Link>)}</div> : <div className="chart-no-data">Збігів змісту у вибраному вікні немає</div>}
         </Card>
         <Impact />
         <IntegrationSlot />

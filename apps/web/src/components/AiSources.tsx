@@ -14,11 +14,14 @@ export function AiSources() {
   const save = useMutation({ mutationFn: () => send(`/admin/ai/sources/${selected?.id}`, "PUT", { llm_allowed: enabled, llm_basis: basis }), onSuccess: () => { dialog.current?.close(); void cache.invalidateQueries({ queryKey: ["ai-status"] }); } });
   const edit = (source: Source, next: boolean) => { setSelected(source); setEnabled(next); setBasis(source.llm_basis || ""); save.reset(); dialog.current?.showModal(); };
   const data = state.data, sources = data?.sources.filter(s => `${s.title} ${s.kind}`.toLocaleLowerCase().includes(filter.toLocaleLowerCase())) || [];
+  const age = data?.heartbeat_at ? Date.now() - new Date(data.heartbeat_at).getTime() : Infinity;
+  const fresh = Number.isFinite(age) && age >= -60000 && age < 300000;
   return <>
-    <Card title="AI-аналітик" actions={<Badge tone={data?.mode === "active" ? "success" : "secondary"}>{data ? modes[data.mode] : "Завантаження"}</Badge>}>
+    <Card title="AI-аналітик" actions={<Badge tone={fresh && data?.mode === "active" ? "success" : "secondary"}>{data ? fresh ? modes[data.mode] : "Немає свіжого сигналу" : state.isError ? "Стан невідомий" : "Завантаження"}</Badge>}>
       <div className="stack">
         {state.isError && <Alert tone="danger">{errorText(state.error)}</Alert>}
         {data && <><p>Розмітка змісту й зведення лише для дозволених джерел. До появи ключа діють правила.</p><dl className="facts"><div><dt>Останній сигнал</dt><dd>{formatDateTime(data.heartbeat_at)}</dd></div><div><dt>Модель</dt><dd>{data.model || "Не налаштована"}</dd></div><div><dt>Ліміт за годину</dt><dd>{data.items_last_hour} / {data.limit_per_hour}</dd></div></dl>
+          {!fresh && <p className="note">Стан сервісу зараз не підтверджено. Останній відомий режим: {modes[data.mode].toLocaleLowerCase()}.</p>}
           {data.last_error && <Alert tone="danger">Останній виклик не завершився. Перевірте конфігурацію провайдера та його доступність.</Alert>}
           <details><summary>Дозволи джерел · {data.sources.filter(s => s.llm_allowed).length} увімкнено</summary><div className="stack ai-source-list"><Field label="Знайти джерело"><input type="search" value={filter} onChange={e => setFilter(e.target.value)} /></Field>{sources.map(source => <div className="ai-source-row" key={source.id}><div><strong>{source.title}</strong><small>{source.kind === "telegram" ? "Telegram" : "RSS"}{source.kind === "rss" && source.rights_status !== "allowed" ? " · немає дозволу" : ""}</small></div><Switch checked={source.llm_allowed} ariaLabel={`AI: ${source.title}`} label={source.llm_allowed ? "Дозволено" : "Вимкнено"} disabled={!source.llm_allowed && source.kind === "rss" && source.rights_status !== "allowed"} onChange={next => edit(source, next)} /></div>)}{!sources.length && <p className="hint">Джерел за цим запитом немає.</p>}</div></details>
           <p className="note">Підстава й зміни дозволів потрапляють у журнал аудиту. Дозвіл на збір і дозвіл на передачу моделі — окремі рішення.</p></>}
