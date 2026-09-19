@@ -45,3 +45,21 @@ Read-only профіль на production, без DDL/записів: 50 джер
 Звичайний processor INSERT mention та незмінений повторний UPDATE не створюють dirty. Підтверджений зайвий шлях — retry після появи parent змінює словникове review→accepted, хоча effective semantic рішення лишається pending. Вузький guard пропускає тільки такий UPDATE без зміни версії/видалення/quote, без будь-якої AI-мітки й без людського рішення. Версія, вміст, видалення, review, labels та права мають попередню негайну інвалідацію. Regression викликає справжній process() для нового/повторного повідомлення, late-parent retry та наступного edit.
 
 Фінально: **18 targeted tests passed**, Python compile і diff check успішні, secret scanner не знайшов типових секретів. 50-source SQL warmup завершує dirty_sources=0; тести worker перевіряють окремі транзакції, batch budget та відсутність starvation після timeout. Незалежний review AI-агента не знайшов High/Critical у SQL-контракті; performance/runtime доопрацювання передані на додатковий погляд. API-файли dashboard/feed/S2 у night-ui узгоджено й staged на доручення root; API typecheck пройшов. Merge-коміт належить root.
+
+## Повний merged backend regression
+
+У night-ui після інтеграції `c4c16b0` і main security fixes застосовано 0030 **тільки на ufv_checks**; checksum міграції тепер зафіксовано, файл незмінний. Повний TypeScript typecheck/build пройшов. Початковий backend-прогін: 127 passed, 4 dashboard/actions HTTP timeouts за 5 s; API завершував запити за 6–7 s. Контрольний прогін тих самих п’яти тестів із jit=off пройшов за 4,60 s. Додано `options: '-c jit=off'` лише до appPool, без ALTER ROLE чи глобальної настройки PostgreSQL; auth pool не змінено. Повторний повний прогін без PGOPTIONS: **131 passed in 30,32 s**.
+
+Bootstrap перевірено за точними SQL-рядками з поточного deploy/bootstrap.py: чотири dashboard grants двічі застосовані до нових тимчасових ролей (нова/наявна роль). Перевірені фактичні ufv_api/collector/processor privileges; тимчасовий processor справді виконав overload. Зайві API DELETE і collector INSERT не надані. Усі тимчасові ролі та зміни відкочено; production bootstrap не запускався.
+
+Повторення на цій машині з night-ui (захищені конфіги поза Git, без виводу секретів):
+
+```sh
+npm run typecheck
+npm run build
+/opt/ufv/.venv/bin/python /tmp/ufv-night-api-setup.py
+/opt/ufv/.venv/bin/python /tmp/ufv-night-api-test-run.py tests
+/opt/ufv/.venv/bin/python /tmp/check-curated-bootstrap-grants.py
+```
+
+Runner використовує API runtime-роль на `http://127.0.0.1:18203`, а fixtures — власника виключно ufv_checks; після тестів сервер зупиняється. Для acceptance root підготовлено `/tmp/ufv-night-acceptance-run.py`: запускає built API, scripts/check_curated_dashboard.py із правильними UFV_TEST_ENV/UFV_CHECK_ORIGIN та завершує сервер. Production-вимірювання живих dashboard 24h/7d/30d після релізу належать root; цей потік не розгортав сервіс.

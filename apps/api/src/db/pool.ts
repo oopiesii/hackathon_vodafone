@@ -10,7 +10,10 @@ export const authPool = new pg.Pool({
   connectionTimeoutMillis: 5000,
 });
 
-export const appPool = new pg.Pool({ connectionString: env.DATABASE_URL, max: 10, connectionTimeoutMillis: 5000 });
+// Curated views produce complex plans even for a handful of visible rows. LLVM
+// compilation overhead coincided with 6–7s dashboard regressions; jit=off
+// fit the existing 5s HTTP deadline. Keep this setting local to application reads.
+export const appPool = new pg.Pool({ connectionString: env.DATABASE_URL, options: "-c jit=off", max: 10, connectionTimeoutMillis: 5000 });
 // Idle connections can be terminated during a database restart. Let the pool
 // reconnect without crashing Node or dumping connection internals into logs.
 for (const pool of [authPool, appPool]) {
