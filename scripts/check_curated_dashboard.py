@@ -79,7 +79,9 @@ try:
     assert viewer.get(f'/api/feed?workflow_id={workflow}&decision=all').json()['total']['count']==4
     other=httpx.Client(base_url=origin,headers={'Origin':origin},timeout=30)
     share=client.post('/api/admin/shares',json={'workflow_id':workflow,'name':'TEST curated','scope':'posts','channel_ids':[source]}).json();shares.append(share['id'])
-    assert other.post('/api/shared/redeem',json={'token':share['url'].split('#')[1]}).status_code==200
+    redeemed=other.post('/api/shared/redeem',json={'token':share['url'].split('#')[1]})
+    assert redeemed.status_code==200
+    other.headers['x-ufv-share-scope']=redeemed.json()['scope_id']
     assert other.get(f'/api/shared/feed?workflow_id={workflow}').json()['total']['count']==4
     assert other.get('/api/shared/feed?workflow_id=1').status_code==403
     # Browser uses real isolated API data, no injected production fixtures.

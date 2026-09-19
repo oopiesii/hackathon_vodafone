@@ -73,7 +73,7 @@ try {
   // finishes after the viewer's replacement request has failed.
   privateDelay = true; pendingPrivate = new Promise(resolve => { releasePrivate = resolve; });
   const previous = adminRequests;
-  await page.getByRole('button', { name: 'Оновити зараз', exact: true }).click();
+  await page.getByRole('button', { name: /^Оновити (зараз|дані)$/ }).click();
   await page.waitForFunction(() => document.querySelector('.dashboard-data')?.getAttribute('aria-busy') === 'true');
   assert.ok(adminRequests > previous);
   await page.getByRole('button', { name: 'Вийти', exact: true }).click();
