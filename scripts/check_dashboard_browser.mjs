@@ -39,7 +39,7 @@ const server = createServer(async (req,res) => {
     data.analysis_coverage={label:'Семантичний відбір · синтетична перевірка',cutoff_at:data.end,pending:22,note:'Нові та застарілі матеріали очікують семантичної перевірки.'};
     data.vodafone_7d={count:2,href:'/feed?workflow_id=1&brand=vodafone&window=7d'};
     data.reaction_freshness={oldest_at:data.start,newest_at:data.end,active_seconds:300,cooling_seconds:3600,sleeping_seconds:21600,note:'Черга й ліміти можуть збільшити інтервал.'};
-    data.reactions={...data.reactions,negative:390,positive:74,negative_share:78};
+    data.reactions={...data.reactions,negative:390,positive:74,negative_share:.78};
     data.metrics.negative_share={...data.metrics.negative_share,value:78,attention:3,attention_note:'Синтетичний високий рівень уваги; поріг — припущення.'};
     data.metrics.critical={...data.metrics.critical,value:2,attention:1,attention_note:'Синтетичний рівень уваги.'};
    }

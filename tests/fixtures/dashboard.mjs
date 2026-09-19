@@ -12,7 +12,7 @@ export const dashboard = {
  hourly: Array.from({length:24}, (_, i) => { const count = series[i % 12]; return { at: new Date(Date.parse(start) + i * 3600000).toISOString(), count, topics: { network: Math.floor(count * .6), billing: count - Math.floor(count * .6) }, href }; }),
  topics: [{topic:'network',count:76,href},{topic:'billing',count:48,href}],
  sources: [{id:'1',title:'Синтетичний приклад · міські новини',kind:'telegram',count:46,href},{id:'2',title:'Тестова телеком-стрічка',kind:'rss',count:35,href},{id:'3',title:'Приклад · технології',kind:'rss',count:22,href},{id:'4',title:'Приклад · регіони',kind:'telegram',count:13,href},{id:'5',title:'Тестове джерело',kind:'telegram',count:8,href}],
- reactions: {negative:120,ironic:22,sad:14,positive:344,total:500,observed_items:48,negative_share:24,href,note:'Евристика: іронічні й сумні реакції враховано окремо'},
+ reactions: {negative:120,ironic:22,sad:14,positive:344,total:500,observed_items:48,negative_share:.24,href,note:'Евристика: іронічні й сумні реакції враховано окремо'},
  signals: [{id:'network',title:'Синтетичний приклад: перебої інтернету у Львові',topic:'network',brand:'vodafone',level:'m',count:9,sources:2,spread:3,action:'investigating',href,evidence:[],reason:'Тестовий сигнал'},{id:'billing',title:'Синтетичний приклад: запитання про новий тариф',topic:'billing',brand:'vodafone',level:'l',count:4,sources:2,spread:0,action:'none',href,evidence:[],reason:'Тестовий сигнал'}],
  spread: [{id:'1',count:3,source_count:2,third_repost_seconds:720,items_per_hour_first_6h:.5,href}],reach_anomalies:[],growth:[],complaints:{count:2,per_hour:1,href,note:'Правила'},
  lag_by_service:[{service:'telegram',median_seconds:83,measured:48,href},{service:'rss',median_seconds:180,measured:12,href}],
