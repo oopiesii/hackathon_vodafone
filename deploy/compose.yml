@@ -83,6 +83,36 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     mem_limit: 512m
+  analyst:
+    image: ufv-analyst:local
+    build: {context: .., dockerfile: deploy/Dockerfile.analyst}
+    restart: unless-stopped
+    init: true
+    environment:
+      DATABASE_URL: postgres://ufv_analyst:${DB_ANALYST_PASSWORD:?}@postgres:5432/ufv
+      NATS_URL: nats://nats:4222
+      UFV_LLM_RUNTIME_FILE: /run/ufv-analyst/runtime.env
+      UFV_LLM_PROVIDER: ${UFV_LLM_PROVIDER:-null}
+      UFV_LLM_API_KEY: ${UFV_LLM_API_KEY:-}
+      UFV_LLM_MODEL: ${UFV_LLM_MODEL:-}
+      UFV_LLM_MAX_ITEMS_PER_HOUR: ${UFV_LLM_MAX_ITEMS_PER_HOUR:-60}
+      UFV_LLM_BASE_URL: ${UFV_LLM_BASE_URL:-}
+      UFV_LLM_ALLOWED_HOSTS: ${UFV_LLM_ALLOWED_HOSTS:-}
+    volumes: ["/etc/ufv/analyst:/run/ufv-analyst:ro"]
+    networks: [backend, egress]
+    depends_on:
+      postgres: {condition: service_healthy}
+      nats: {condition: service_started}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "python", "-m", "analyst.health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
   processor:
     image: ufv-pipeline:local
     command: ["python", "-m", "pipeline.processor"]

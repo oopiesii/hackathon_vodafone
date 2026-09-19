@@ -21,6 +21,7 @@ import { actions } from './routes/actions.js';
 import { refresh } from './routes/refresh.js';
 import { dashboard } from './routes/dashboard.js';
 import { analysis } from './routes/analysis.js';
+import { aiAdmin } from './routes/ai-admin.js';
 
 // CORS навмисно немає: браузер завжди ходить на той самий origin (Vite-проксі в dev, reverse proxy в проді).
 export const app = new Hono().basePath("/api");
@@ -52,6 +53,7 @@ app.route('/analysis',analysis);
 app.route('/dashboard',dashboard);
 app.route('/admin/refresh',refresh);
 app.route('/admin/documents',actions);
+app.route('/admin/ai',aiAdmin);
 app.get('/workflows',requireSession,async c=>c.json({items:await query('select id,name from core.workflows order by id')}));
 
 app.notFound((c) => c.json({ error: "not_found" }, 404));

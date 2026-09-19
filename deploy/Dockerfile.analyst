@@ -1,0 +1,9 @@
+FROM python:3.13-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app/services
+WORKDIR /app
+COPY services/analyst/requirements.txt /app/services/analyst/requirements.txt
+RUN pip install --no-cache-dir -r services/analyst/requirements.txt && useradd --uid 10001 --create-home analyst
+COPY services/analyst /app/services/analyst
+COPY services/pipeline/__init__.py services/pipeline/bus.py services/pipeline/classification.py /app/services/pipeline/
+USER analyst
+CMD ["python", "-m", "analyst.runtime"]
