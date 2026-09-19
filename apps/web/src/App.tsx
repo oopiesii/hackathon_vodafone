@@ -1,7 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
-import { Navigate, Route, Routes } from "react-router";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { useState, type ReactNode } from "react";
+import { Navigate, Route, Routes, useLocation } from "react-router";
 import { Shell } from "./components/Shell";
-import { api, can, type Me } from "./lib/api";
+import { api, can, errorText, type Me } from "./lib/api";
 import { authClient } from "./lib/auth-client";
 import { AdminUsers } from "./pages/AdminUsers";
 import { Dashboard } from "./pages/Dashboard";
@@ -16,18 +17,39 @@ import { SharedDashboard } from './pages/SharedDashboard';
 import { Analysis } from './pages/Analysis';
 
 export function App() {
-  return <Routes><Route path="/view" element={<SharedDashboard/>}/><Route path="*" element={<AuthenticatedApp/>}/></Routes>;
+  return <Routes><Route path="/view" element={<PublicApp/>}/><Route path="*" element={<AuthenticatedApp/>}/></Routes>;
+}
+
+// A cache belongs to one mounted authorization boundary. Retired requests can
+// only complete into their old client; they cannot repopulate the next session.
+function QueryScope({ children }: { children: ReactNode }) {
+  const [client] = useState(() => new QueryClient({
+    defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+  }));
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
+
+function PublicApp() {
+  const location = useLocation();
+  const [boundary, setBoundary] = useState({ navigation: location.key, hash: location.hash, id: 0 });
+  // Native same-document hash navigation can reuse the history entry's key.
+  // Change the mount identity before any old shared content can be committed.
+  if (boundary.navigation !== location.key || boundary.hash !== location.hash) {
+    setBoundary({ navigation: location.key, hash: location.hash, id: boundary.id + 1 });
+    return null;
+  }
+  // Every public navigation verifies the current share cookie afresh. No token
+  // is included in a query key; different links never inherit a previous feed.
+  return <QueryScope key={boundary.id}><SharedDashboard/></QueryScope>;
 }
 function AuthenticatedApp() {
   const session = authClient.useSession();
-  const signedIn = Boolean(session.data);
-  const me = useQuery({ queryKey: ["me", session.data?.user.id], queryFn: () => api<Me>("/me"), enabled: signedIn });
 
-  if (session.isPending || (signedIn && me.isPending)) {
+  if (session.isPending) {
     return <p className="loading" role="status">Завантаження…</p>;
   }
 
-  if (!signedIn) {
+  if (!session.data) {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
@@ -36,19 +58,37 @@ function AuthenticatedApp() {
     );
   }
 
+  const identity = JSON.stringify([session.data.session.id, session.data.user.id, session.data.user.role]);
+  return <QueryScope key={identity}><AuthorizedApp/></QueryScope>;
+}
+
+function AuthorizedApp() {
+  const me = useQuery({ queryKey: ["me"], queryFn: () => api<Me>("/me"), refetchInterval: 60000, refetchOnWindowFocus: true });
+  if (me.isError) return <div className="auth"><div className="auth-card stack" role="alert">
+    <p>Не вдалося підтвердити права доступу. {errorText(me.error)}</p>
+    <button type="button" className="btn" onClick={() => { void me.refetch(); }} disabled={me.isFetching}>Спробувати знову</button>
+    <button type="button" className="btn btn-outline" onClick={() => { void authClient.signOut(); }}>Вийти</button>
+  </div></div>;
+  if (!me.data) return <p className="loading" role="status">Завантаження…</p>;
+  const permissions = Object.entries(me.data.permissions).sort(([a], [b]) => a.localeCompare(b)).map(([resource, actions]) => [resource, [...actions].sort()]);
+  const scope = JSON.stringify([me.data.user.id, me.data.user.role, permissions]);
+  return <QueryScope key={scope}><PrivateApp me={me.data}/></QueryScope>;
+}
+
+function PrivateApp({ me }: { me: Me }) {
   return (
-    <Shell me={me.data}>
+    <Shell me={me}>
       <Routes>
-        <Route path="/" element={<Dashboard me={me.data} />} />
-        <Route path="/feed" element={<Feed me={me.data} />} />
-        {can(me.data, "incident", "edit") && <Route path="/analysis" element={<Analysis />} />}
-        {can(me.data, "incident", "edit") && <Route path="/inbox" element={<Incoming me={me.data} />} />}
-        {can(me.data, "collector", "manage") && <Route path="/sources" element={<Sources />} />}
-        {can(me.data, "collector", "manage") && <Route path="/sources/telegram" element={<TelegramAdmin />} />}
-        {can(me.data, "collector", "manage") && <Route path="/sources/rss" element={<RssSources />} />}
+        <Route path="/" element={<Dashboard me={me} />} />
+        <Route path="/feed" element={<Feed me={me} />} />
+        {can(me, "incident", "edit") && <Route path="/analysis" element={<Analysis />} />}
+        {can(me, "incident", "edit") && <Route path="/inbox" element={<Incoming me={me} />} />}
+        {can(me, "collector", "manage") && <Route path="/sources" element={<Sources />} />}
+        {can(me, "collector", "manage") && <Route path="/sources/telegram" element={<TelegramAdmin />} />}
+        {can(me, "collector", "manage") && <Route path="/sources/rss" element={<RssSources />} />}
         <Route path="/account" element={<Account />} />
-        {can(me.data, "collector", "manage") && <Route path="/admin/telegram" element={<TelegramAdmin />} />}
-        {can(me.data, "user", "list") && <Route path="/admin/users" element={<AdminUsers />} />}
+        {can(me, "collector", "manage") && <Route path="/admin/telegram" element={<TelegramAdmin />} />}
+        {can(me, "user", "list") && <Route path="/admin/users" element={<AdminUsers />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Shell>
