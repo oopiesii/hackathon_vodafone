@@ -164,7 +164,8 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
   group by item_id having count(*)>=2 and max(observed_at)>min(observed_at)`,[items.map(i=>i.raw_item_id)]);
  const growth=growthRows.filter(r=>Number(r.last_views)>=Number(r.first_views)).map(r=>{const i=items.find(i=>String(i.raw_item_id)===String(r.item_id))!;return {id:String(i.id),views_per_hour:(Number(r.last_views)-Number(r.first_views))/Number(r.seconds)*3600,observations:r.observations,href:href({ids:String(i.id)})};}).sort((a,b)=>b.views_per_hour-a.views_per_hour).slice(0,10);
  const countSeries=hourly.map(b=>b.count);
- const reactionSeries=window==='30d'?[]:hourly.map(b=>reactions(items.filter(i=>Math.floor(time(i.event_at)/HOUR)===Math.floor(time(b.at)/HOUR))).negative_share).map(n=>n===null?0:n*100);
+ const reactionShares=window==='30d'?[]:hourly.map(b=>reactions(items.filter(i=>Math.floor(time(i.event_at)/HOUR)===Math.floor(time(b.at)/HOUR))).negative_share);
+ const reactionSeries=reactionShares.some(n=>n===null)?[]:reactionShares.map(n=>n!*100);
  const counts:DashboardResponse['counts']={accepted:count('accepted')};
  if(review)Object.assign(counts,{review:count('review'),collected:window==='30d'?sum(rollups.map(i=>i.count)):all.length,rejected:count('rejected'),pending:count('pending')});
  const criticalIds=current.filter(i=>signals.some(s=>s.level==='h'&&s.topic===i.topic&&s.brand===i.brand)&&(i.negative||anomalyIds.has(String(i.id)))).map(i=>String(i.id));
@@ -182,7 +183,7 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
   complaints:{count:complaints,per_hour:complaints/Math.min(hours,168),href:href({negative:'1',kind:'comment'}),note:'Негативні тематичні коментарі під постами на спостереженні, не доведені скарги; максимум 7 днів.'},lag_by_service:lagServices,
   freshness:freshnessRows.map(r=>({...r,last_success_at:r.last_success_at?iso(r.last_success_at):null,heartbeat_at:r.heartbeat_at?iso(r.heartbeat_at):null})),
   competitors:['kyivstar','lifecell'].map(brand=>{const rows=(window==='30d'?aggregate:items).filter(i=>i.brand===brand);return {brand,count:window==='30d'?sum(rows.map(i=>i.count)):rows.length,negative:window==='30d'?sum(rows.map(i=>i.negative_count)):rows.filter(i=>i.negative).length,href:href({brand})};}),
-  ai:{status:'rules',label:'Результат правил · AI очікує ключ',summary:`За вікно — ${mentions} тематичних матеріалів. ${window==='30d'?'Місячні дані агреговані.':`Високий сигнал: ${criticalIds.length} матеріалів за 24 години.`}`,href:'/analysis?workflow_id='+workflow},
+  ai:{status:'rules',label:'Результат правил · AI очікує ключ',summary:`За вікно — ${mentions} тематичних матеріалів. ${window==='30d'?'Місячні дані агреговані.':`Високий сигнал: ${criticalIds.length} матеріалів за 24 години.`}`,href:href()},
   methodology:['Часове вікно: останні 24 години / 7 днів; 30 календарних днів за Києвом включно із сьогодні. Невідома дата публікації → час збору для включення до вікна, але не для затримки.',
    'Негатив тексту визначено словниковими правилами; точність не виміряна. Сигнал не доводить реальний збій.',
    'Високий сигнал: ≥3× медіани останніх 30 видимих постів джерела або ознаки збою у ≥3 джерелах за 2 години. Середній: негатив у ≥2 джерелах. Пороги — припущення.',
