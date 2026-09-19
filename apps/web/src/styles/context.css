@@ -1,0 +1,95 @@
+/* Контекстні блоки дашборда: зовнішня зв'язність мереж і відгуки App Store. Кольори даних — токени з dashboard.css. */
+.context-card .card-footer{min-height:0}
+.context-source{display:block;max-width:none;font-size:var(--f-xs)}
+.context-source a{display:inline-flex;align-items:center;gap:4px;min-height:0}
+.context-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:8px}
+.context-head .note{flex:1;min-width:200px;font-size:var(--f-xs)}
+.context-lines{min-width:0}
+.context-lines svg{display:block;max-width:100%;border-radius:var(--radius-sm);touch-action:pan-y}
+.context-lines svg:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.context-axis{font-size:var(--f-xs)}
+.context-line{fill:none;stroke:var(--data-context);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
+.context-line-own{stroke:var(--data-accent);stroke-width:2}
+.context-threshold{stroke:var(--muted-foreground);stroke-width:1;stroke-dasharray:4 3}
+.context-cursor{stroke:var(--foreground);stroke-width:1;opacity:.45}
+.context-end{font-size:var(--f-xs);fill:var(--muted-foreground)}
+.context-end-own{fill:var(--foreground);font-weight:600}
+.context-stats{margin-top:4px;font-size:var(--f-sm)}
+.context-stats th{height:28px;padding:0 8px;font-size:var(--f-xs)}
+.context-stats td{padding:6px 8px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.context-stats td:first-child{white-space:normal}
+.context-stats th:not(:first-child),.context-stats td:not(:first-child){text-align:right}
+.context-stats small{font-size:var(--f-xs);color:var(--subtle-foreground)}
+.context-stats-own td{font-weight:600}
+.context-stats tbody tr:hover td{background:transparent}
+
+.reviews{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.reviews-legend{min-height:0}
+.review-positive{fill:var(--data-accent);background:var(--data-accent)}
+.reviews-rows{display:grid;gap:2px}
+.reviews-row{display:grid;grid-template-columns:72px minmax(0,1fr) 40px 84px;grid-template-areas:"name bar share meta" "name period period period";align-items:center;gap:0 10px;min-height:44px;padding:4px 8px;margin:0 -8px;color:inherit;text-decoration:none;border-radius:var(--radius-sm)}
+.reviews-row:hover{background:var(--secondary)}
+.reviews-name{grid-area:name;display:inline-flex;align-items:center;gap:4px;font-size:var(--f-sm);color:var(--muted-foreground)}
+.reviews-row-own .reviews-name{font-weight:600;color:var(--foreground)}
+.reviews-bar{grid-area:bar;display:block;width:100%;height:12px}
+.reviews-share{grid-area:share;text-align:right;font-size:var(--f-base);font-variant-numeric:tabular-nums}
+.reviews-meta{grid-area:meta;display:inline-flex;align-items:center;justify-content:flex-end;gap:4px;font-size:var(--f-sm);font-variant-numeric:tabular-nums;white-space:nowrap}
+.reviews-meta small{font-size:var(--f-xs);color:var(--muted-foreground)}
+.reviews-period{grid-area:period;font-size:var(--f-xs);color:var(--subtle-foreground)}
+.reviews-daily{display:grid;gap:4px;margin:0}
+.reviews-daily svg{display:block;width:100%;height:44px}
+.reviews-quotes{display:grid;gap:8px}
+.reviews-quote{display:grid;gap:2px;margin:0;padding:8px 12px;font-size:var(--f-sm);background:var(--canvas);border-left:2px solid var(--input);border-radius:0 var(--radius-sm) var(--radius-sm) 0;overflow-wrap:anywhere}
+.reviews-quote-head{display:flex;align-items:center;gap:8px}
+.reviews-quote>span:last-child{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;color:var(--muted-foreground)}
+@media(max-width:1000px){.context-card.span-7,.context-card.span-5{grid-column:1/-1}}
+@media(max-width:480px){.reviews-row{grid-template-columns:64px minmax(0,1fr) 36px;grid-template-areas:"name bar share" "name period period" "name meta meta"}.reviews-meta{justify-content:flex-start}}
+
+/* Вердикт мережі людською мовою */
+.network-verdict{display:flex;align-items:center;gap:16px;margin-bottom:8px}
+.network-value{font-size:var(--f-2xl);font-weight:600;letter-spacing:-.02em;line-height:1.1;white-space:nowrap}
+.network-verdict p{font-size:var(--f-base);font-weight:500;min-width:0}
+.network-verdict p span{display:block;margin-top:2px;font-size:var(--f-xs);font-weight:400;color:var(--muted-foreground)}
+
+/* Області */
+.regions-lead{margin-bottom:12px;font-size:var(--f-base);font-weight:500}
+.regions-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.region{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name value" "spark spark" "state state";gap:2px 8px;align-items:baseline;min-height:84px;padding:10px 12px;color:inherit;text-decoration:none;border:1px solid var(--border);border-radius:var(--radius);transition:border-color .15s}
+.region:hover{border-color:var(--ring)}
+.region-name{grid-area:name;font-size:var(--f-sm);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.region-value{grid-area:value;font-size:var(--f-md);font-variant-numeric:tabular-nums}
+.region-spark{grid-area:spark;display:block;width:100%;height:24px}
+.region-spark path{fill:none;stroke:var(--data-context);stroke-width:1.5;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.region-state{grid-area:state;display:inline-flex;align-items:center;gap:6px;font-size:var(--f-xs);color:var(--muted-foreground)}
+.region-state i{width:6px;height:6px;border-radius:50%;background:var(--success-fg)}
+.region-degraded{border-color:var(--warning-border);background:var(--warning-bg)}
+.region-degraded .region-state{color:var(--warning-fg)}.region-degraded .region-state i{background:var(--warning-fg)}.region-degraded .region-spark path{stroke:var(--warning-fg)}
+.region-outage{border-color:var(--danger-border);background:var(--danger-bg)}
+.region-outage .region-state{color:var(--danger-fg)}.region-outage .region-state i{background:var(--danger-fg)}.region-outage .region-spark path{stroke:var(--danger-fg)}
+@media(max-width:1200px){.regions-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:640px){.regions-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.network-verdict{align-items:flex-start;flex-direction:column;gap:4px}}
+
+/* Головне зараз: підсумок, рекомендації, чат — перший блок дашборда */
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.briefing{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:0 24px;padding:20px 24px;background:var(--card);border:1px solid var(--border);border-left:4px solid var(--success-fg);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm)}
+.briefing-attention{border-left-color:var(--warning-fg)}
+.briefing-critical{border-left-color:var(--danger-fg)}
+.briefing-eyebrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:var(--f-xs);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted-foreground)}
+.briefing-eyebrow .badge{text-transform:none;letter-spacing:0}
+.briefing-headline{margin-top:6px;font-size:var(--f-xl);font-weight:600;letter-spacing:-.02em;line-height:1.25;text-wrap:balance}
+.briefing-facts{display:grid;gap:6px;margin:12px 0 0;padding-left:18px;font-size:var(--f-base)}
+.briefing-facts a{text-decoration:underline;text-decoration-color:var(--input);text-underline-offset:3px}
+.briefing-advice{padding:16px 20px;background:var(--canvas);border:1px solid var(--border);border-radius:var(--radius);align-self:start}
+.briefing-advice h3{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.briefing-advice ol{display:grid;gap:10px;margin:10px 0 0;padding-left:18px;font-size:var(--f-base)}
+.briefing-advice li span{display:block;margin-top:2px;font-size:var(--f-xs);color:var(--muted-foreground)}
+.briefing-chat{grid-column:1/-1;display:grid;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+.briefing-log{display:grid;gap:10px}
+.briefing-q{justify-self:end;width:fit-content;max-width:80%;margin-left:auto;padding:6px 12px;font-size:var(--f-sm);color:var(--primary-foreground);background:var(--primary);border-radius:var(--radius-lg)}
+.briefing-a{max-width:92ch;margin-top:6px;padding:10px 14px;font-size:var(--f-sm);line-height:1.6;background:var(--canvas);border:1px solid var(--border);border-radius:var(--radius-lg)}
+.briefing-ask{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.briefing-more{font-size:var(--f-sm);font-weight:500;color:var(--muted-foreground)}
+.briefing-ask form{display:flex;flex:1;gap:6px;min-width:240px}
+.briefing-ask input{min-height:32px;padding:4px 10px;font-size:var(--f-sm)}
+@media(max-width:1000px){.briefing{grid-template-columns:minmax(0,1fr);gap:16px}.briefing-chat{margin-top:0}}
+@media(max-width:640px){.briefing{padding:16px}.briefing-headline{font-size:var(--f-lg)}}

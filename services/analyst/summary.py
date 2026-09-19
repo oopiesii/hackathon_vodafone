@@ -4,6 +4,7 @@ import re
 from zoneinfo import ZoneInfo
 from psycopg.types.json import Jsonb
 
+from . import gate
 from .db import reserve_budget
 from .label import bounded_text
 from .validation import obj, check_schema
@@ -110,6 +111,12 @@ def summarize_window(db, workflow_id, window, provider, config):
             and rule_decision='accepted' and published_at>=%s and published_at<%s
             order by published_at desc,id desc limit 20''', (workflow_id,max(start,end-timedelta(days=7)),end))
         items = [{'id': row['id'],'kind':row['kind'],'text':bounded_text(row['text'],2400)} for row in rows]
+    if gate.enabled():
+        previous = db.one('select body,input_versions from core.ai_summaries where workflow_id=%s and "window"=%s order by id desc limit 1',
+                          (workflow_id,window))
+        current_versions = [{'id':row['id'],'version':row['version'],'rule_decision':row['rule_decision']} for row in rows]
+        if not gate.needs_new_summary(provider if config.enabled else None,previous,counts,current_versions,items):
+            return 'unchanged'
     body = summarize_by_rules(counts)
     mode, model = 'rules', 'rules-v2'
     if window == '30d' and counts['total'] and config.enabled and reserve_budget(db,config.max_items_per_hour):

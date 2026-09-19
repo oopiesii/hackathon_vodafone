@@ -12,6 +12,10 @@ import { RefreshControl } from "../components/dashboard/RefreshControl";
 import { Impact } from "../components/dashboard/Impact";
 import { Summary } from "../components/dashboard/Summary";
 import { Signals } from "../components/dashboard/Signals";
+import { NetworkHealth } from "../components/dashboard/NetworkHealth";
+import { AppReviews } from "../components/dashboard/AppReviews";
+import { RegionsHealth } from "../components/dashboard/RegionsHealth";
+import { Briefing } from "../components/dashboard/Briefing";
 import { quantity } from "../lib/plural";
 import { dailyBuckets } from "../lib/chart-buckets";
 import { api, can, errorText, type Me } from "../lib/api";
@@ -42,6 +46,7 @@ export function Dashboard({ me }: { me: Me | undefined }) {
     {data && <div className="dashboard-data" aria-busy={query.isFetching}>
       <div className="dashboard-freshness"><span className="row"><span className="dot" />Зріз {time(data.generated_at)}</span>{data.freshness.map(s => <span key={s.service}>{SERVICE_NAMES[s.service] ?? s.service}: {s.enabled ? time(s.last_success_at) : "збір вимкнено"}</span>)}{data.aggregated && <span>Згортки: {data.aggregate_updated_at ? time(data.aggregate_updated_at) : "очікує оновлення"}</span>}{query.isFetching && <span role="status">Оновлення…</span>}</div>
       {data.aggregation && !data.aggregation.complete && <Alert>{data.aggregation.note}</Alert>}
+      <Briefing data={data} />
       <div className="dashboard-overview">
         <Link className={`brand-status brand-status-${data.brand_status.level}`} to={data.brand_status.href} title={data.brand_status.reason}>
           <span className="brand-status-label">Vodafone Україна <span>Евристика сигналів</span></span>
@@ -54,6 +59,9 @@ export function Dashboard({ me }: { me: Me | undefined }) {
       {data.vodafone_7d && <div className="dashboard-coverage"><Link className="btn btn-outline" to={data.vodafone_7d.href}>Vodafone: згадки за 7 днів — {count(data.vodafone_7d.count)}<ArrowUpRight size={16} aria-hidden="true" /></Link><span>Відсутність згадок за 24 години не означає відсутності даних за тиждень.</span></div>}
       {data.analysis_coverage && <div className="dashboard-coverage"><strong>{data.analysis_coverage.label || "Семантичний відбір"}{data.analysis_coverage.cutoff_at ? ` · зріз ${time(data.analysis_coverage.cutoff_at)}` : ""}</strong><span>{data.analysis_coverage.note}</span>{data.analysis_coverage.pending !== undefined && <Link to={`/inbox?workflow_id=${workflow}`}>Очікує семантичної перевірки: {count(data.analysis_coverage.pending)} · відкрити увесь вхід</Link>}</div>}
       <div className="dashboard-grid">
+        <NetworkHealth window={window} />
+        <AppReviews />
+        <RegionsHealth />
         <Card className="dashboard-now span-7" title="Що зараз" actions={<Badge>Останні 24 год</Badge>} footer={<Link className="btn btn-ghost btn-sm" to={`/feed?workflow_id=${workflow}&decision=${data.visibility === "accepted" ? "accepted" : "visible"}`}>Відкрити стрічку<ArrowUpRight size={14} aria-hidden="true" /></Link>}><Signals data={data} /></Card>
         <Card className="span-5" title={window !== "24h" ? "Динаміка за днями" : "Динаміка згадок"}>{calculating ? waiting : <HourlyBars data={window === "7d" ? dailyBuckets(data.hourly, data.start, data.end) : data.hourly} daily={window !== "24h"} />}</Card>
         <Card className="span-4" title="Реакції" actions={<Badge title={data.reactions.note}>Евристика</Badge>} footer={<span className="note">{calculating ? "Очікуємо повного зрізу" : `${quantity(data.reactions.observed_items, "матеріал", "матеріали", "матеріалів")} із реакціями · реакція на допис не дорівнює ставленню до оператора`}</span>}>{calculating ? waiting : <ShareBar negative={data.reactions.negative} ironic={data.reactions.ironic} sad={data.reactions.sad} positive={data.reactions.positive} href={data.reactions.href} />}{data.reaction_freshness && !calculating && <ReactionTiming data={data.reaction_freshness} />}</Card>
