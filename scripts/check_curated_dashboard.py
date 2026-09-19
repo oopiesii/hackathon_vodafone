@@ -20,7 +20,7 @@ db=psycopg.connect(cfg['DATABASE_URL'],row_factory=dict_row,autocommit=True)
 workflow=db.execute("insert into core.workflows(name,enabled) values(%s,true) returning id",('TEST curated '+tag,)).fetchone()['id']
 source=db.execute("insert into core.sources(kind,external_id,title,workflow_id,enabled) values('telegram',%s,'TEST curated source',%s,true) returning id",('test_curated_'+tag,workflow)).fetchone()['id']
 run=str(uuid.uuid4())
-db.execute("insert into core.analysis_runs(id,workflow_id,cutoff_at,model,prompt_version,scope,status,total,note) values(%s,%s,now(),'TEST','TEST','{}','complete',0,'SYNTHETIC only')",(run,workflow))
+db.execute("insert into core.analysis_runs(id,workflow_id,cutoff_at,model,prompt_version,scope,status,total,note) values(%s,%s,now(),'TEST','TEST',%s,'complete',0,'SYNTHETIC only')",(run,workflow,Jsonb({'source_ids':[source],'source_kind':'telegram'})))
 raw_ids=[];mention_ids=[];users=[];shares=[]
 
 def item(text, decision='relevant', ago=1, brand='vodafone', sentiment='negative', context=None, kind='post'):
@@ -40,7 +40,11 @@ def item(text, decision='relevant', ago=1, brand='vodafone', sentiment='negative
 def get(path):
     r=client.get(path);assert r.status_code==200,(path,r.status_code,r.text[:500]);return r.json()
 
-def dashboard(window='24h'):return get(f'/api/dashboard?workflow_id={workflow}&window={window}')
+def dashboard(window='24h', *, refresh=True):
+    # Publish only our private source; other suites' generations are untouched.
+    if window=='30d' and refresh:
+        db.execute('select core.refresh_dashboard_rollups(%s)',(source,))
+    return get(f'/api/dashboard?workflow_id={workflow}&window={window}')
 
 try:
     trump,tm=item('TEST Trump political news','unrelated')
@@ -58,6 +62,10 @@ try:
     assert a['metrics']['negative_share']['attention']==3
     assert a['reaction_freshness']['active_seconds']==300
     assert dashboard('7d')['metrics']['mentions']['value']==4
+    partial=dashboard('30d',refresh=False)
+    assert not partial['aggregation']['complete']
+    assert all(m['value'] is None for m in partial['metrics'].values())
+    assert 'vodafone_7d' not in partial
     assert dashboard('30d')['metrics']['mentions']['value']==4
     assert len(get('/api'+a['metrics']['mentions']['href'])['items'])==3
     for src in a['sources']:
@@ -71,6 +79,7 @@ try:
     # Viewer and shares see accepted results, never pending/rejected through a query parameter.
     email=f'curated-viewer-{tag}@ufv.test';password='Synthetic-curated-checks!'
     r=client.post('/api/auth/admin/create-user',json={'name':'TEST curated viewer','email':email,'password':password,'role':'viewer'});assert r.status_code==200
+    users.append(r.json()['user']['id'])
     viewer=httpx.Client(base_url=origin,headers={'Origin':origin},timeout=30)
     assert viewer.post('/api/auth/sign-in/email',json={'email':email,'password':password}).status_code==200
     v=viewer.get(f'/api/dashboard?workflow_id={workflow}').json()
@@ -116,6 +125,7 @@ try:
     assert dashboard()['metrics']['mentions']['value']==4
     db.execute('update raw.items set version=version+1 where id=%s',(vf,))
     assert dashboard()['metrics']['mentions']['value']==3
+    assert dashboard('30d',refresh=False)['metrics']['mentions']['value'] is None
     assert dashboard('30d')['metrics']['mentions']['value']==3
     # New parent context invalidates a classification that previously lacked it.
     missing,mm=item('TEST missing context')
@@ -124,7 +134,7 @@ try:
     late,lm=item('TEST late parent','unrelated')
     db.execute("update raw.items set source_item_id='late-parent' where id=%s",(late,))
     assert dashboard()['metrics']['mentions']['value']==3
-    db.execute('update core.analysis_runs set scope=%s where id=%s',(Jsonb({'test_source_ids':[source]}),run))
+    db.execute('update core.analysis_runs set scope=%s where id=%s',(Jsonb({'source_ids':[source],'source_kind':'telegram','test_source_ids':[source]}),run))
     assert dashboard('30d')['metrics']['mentions']['value']==0
     print('PASS: semantic gating, political-noise exclusion, Vodafone 7d, metric drilldowns, reactions, roles/shares, stale context, manual decisions, monthly data, responsive browser.')
     viewer.close();other.close()
@@ -132,11 +142,13 @@ finally:
     # Only this private workflow, never TRUNCATE shared test tables.
     for sid in shares:
         db.execute('delete from auth.share_sessions where share_id=%s',(sid,));db.execute('delete from auth.share_links where id=%s',(sid,))
+    for uid in users:db.execute('delete from auth."user" where id=%s',(uid,))
     db.execute('delete from core.analysis_labels where run_id=%s',(run,));db.execute('delete from core.analysis_runs where id=%s',(run,))
     db.execute('delete from core.review_decisions where mention_id=any(%s)',(mention_ids,))
     db.execute('delete from core.processing_receipts where raw_item_id=any(%s)',(raw_ids,))
     db.execute('delete from core.mentions where id=any(%s)',(mention_ids,))
     db.execute('delete from raw.metric_snapshots where item_id=any(%s)',(raw_ids,))
     db.execute('delete from raw.items where id=any(%s)',(raw_ids,))
+    db.execute('delete from core.daily_rollups where source_id=%s',(source,))
     db.execute('delete from core.sources where id=%s',(source,));db.execute('delete from core.workflows where id=%s',(workflow,))
     db.close();client.close()
