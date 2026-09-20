@@ -4,16 +4,17 @@ import { Badge, Card, Dialog, Field } from "./ui";
 import { DEMO_REGIONS, type DemoTower } from "../demo/towers";
 import { quantity } from "../lib/plural";
 import networkSchema from "../../../../packages/contracts/events/network.site.status.v1.schema.json?raw";
+import type { WidgetHandle } from "../lib/dashboard-layout";
 
 const states = { available: { label: "Доступна", tone: "success" }, unavailable: { label: "Недоступна", tone: "warning" }, unknown: { label: "Невідомо", tone: "secondary" } } as const;
-export function IntegrationSlot() {
+export function IntegrationSlot({ widget }: { widget?: WidgetHandle }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [region, setRegion] = useState<string | null>(null), [site, setSite] = useState<DemoTower | null>(null);
   const [minutes, setMinutes] = useState(30);
   const selected = DEMO_REGIONS.find(r => r.id === region);
   const open = () => { setRegion(null); setSite(null); dialog.current?.showModal(); };
   return <>
-    <Card className="span-4" title="Стан мережі" actions={<Badge tone="secondary">Демо</Badge>} footer={<button className="btn btn-outline btn-sm" type="button" onClick={open}>Регіони та вишки<ChevronRight size={14} aria-hidden="true" /></button>}>
+    <Card widget={widget} className="span-4" title="Стан мережі" actions={<Badge tone="secondary">Демо</Badge>} footer={<button className="btn btn-outline btn-sm" type="button" onClick={open}>Регіони та вишки<ChevronRight size={14} aria-hidden="true" /></button>}>
       <div className="integration-teaser"><RadioTower size={24} aria-hidden="true" /><strong>Інтеграцію не підключено</strong><span>Реальний стан мережі невідомий</span><div className="row">{DEMO_REGIONS.map(r => <button type="button" className="btn btn-ghost btn-sm" key={r.id} onClick={() => { setRegion(r.id); setSite(null); dialog.current?.showModal(); }}>{r.name}</button>)}</div></div>
     </Card>
     <Dialog ref={dialog} title={site ? `Демо · ${site.id}` : selected ? `Демо · ${selected.name}` : "Демо · стан мережі"} titleId="network-slot-title">

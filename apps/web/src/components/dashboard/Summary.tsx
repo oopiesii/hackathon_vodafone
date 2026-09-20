@@ -3,9 +3,10 @@ import { ArrowUpRight } from "lucide-react";
 import { Link } from "react-router";
 import { Badge, Card } from "../ui";
 import { formatDateTime } from "../../lib/format";
+import type { WidgetHandle } from "../../lib/dashboard-layout";
 
-export function Summary({ summary }: { summary: DashboardSummary }) {
-  return <Card className="span-12 dashboard-summary" title="Зведення періоду" actions={<Badge tone="secondary">{summary.label}</Badge>}
+export function Summary({ summary, widget }: { summary: DashboardSummary; widget?: WidgetHandle }) {
+  return <Card widget={widget} className="span-12 dashboard-summary" title="Зведення періоду" actions={<Badge tone="secondary">{summary.label}</Badge>}
     footer={<Link className="btn btn-ghost btn-sm" to={summary.href}>Матеріали зведення<ArrowUpRight size={14} aria-hidden="true" /></Link>}>
     <div className="stack"><p>{summary.summary}</p>
       {summary.coverage && <p className="note">Лише джерела з дозволом на AI · покриття відрізняється від загальних метрик.{summary.generated_at && <> Зріз: {formatDateTime(summary.generated_at)}.</>}</p>}

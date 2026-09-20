@@ -132,3 +132,10 @@
 .reaction-ironic{fill:var(--data-accent);background:var(--data-accent)}
 .item-summary{font-size:var(--f-sm);line-height:1.5;margin:12px 0}
 .dashboard-coverage>a:not(.btn){display:inline-flex;align-items:center;min-height:32px}
+
+/* Налаштування вигляду: згортання й порядок блоків. Зберігається лише в браузері. */
+.widget-tools{display:flex;align-items:center;gap:2px;flex-shrink:0}
+.widget-position{color:var(--muted-foreground);font-size:var(--f-xs);font-variant-numeric:tabular-nums;padding-inline:4px}
+.dashboard-grid>.card-collapsed{align-self:start}
+.dashboard-grid .card-collapsed .card-header{padding-bottom:16px}
+.dashboard-layout-hint{color:var(--muted-foreground);font-size:var(--f-sm);margin:0}

@@ -3,6 +3,7 @@ import { ExternalLink, Star } from "lucide-react";
 import { api } from "../../lib/api";
 import { plural } from "../../lib/plural";
 import { Badge, Card } from "../ui";
+import type { WidgetHandle } from "../../lib/dashboard-layout";
 
 type Review = { rating: number; date: string; version: string; title: string; text: string };
 type App = {
@@ -17,12 +18,12 @@ const day = (iso: string | null) => (iso ? `${iso.slice(8, 10)}.${iso.slice(5, 7
 const stars = (app: App, from: number, to: number) => app.distribution.filter((d) => d.stars >= from && d.stars <= to).reduce((a, d) => a + d.count, 0);
 
 /** Голос клієнта: останні відгуки App Store на застосунки операторів. Оцінка в зірках — розмітка настрою від самих людей, без моделі. */
-export function AppReviews() {
+export function AppReviews({ widget }: { widget?: WidgetHandle }) {
   const query = useQuery({ queryKey: ["context-reviews"], queryFn: () => api<ReviewsResponse>("/context/reviews"), refetchInterval: 30 * 60_000 });
   const data = query.data, ready = data?.available ? data : null;
   const own = ready?.apps.find((a) => a.id === "vodafone");
   return (
-    <Card className="span-5 context-card" title="Відгуки App Store"
+    <Card widget={widget} className="span-5 context-card" title="Відгуки App Store"
       actions={<Badge tone="secondary" title="Apple віддає лише найновіші відгуки; вибірка не репрезентує всіх користувачів.">Останні відгуки</Badge>}
       footer={<span className="note context-source">Офіційний відкритий фід Apple · автори не зберігаються · вибірка найновіших відгуків, не всіх користувачів</span>}>
       {query.isPending && <div className="chart-no-data" role="status">Отримуємо відгуки…</div>}

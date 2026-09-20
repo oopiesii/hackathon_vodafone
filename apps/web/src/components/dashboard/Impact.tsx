@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { Calculator, ExternalLink } from "lucide-react";
 import { api } from "../../lib/api";
 import { Badge, Card, Dialog, Field } from "../ui";
+import type { WidgetHandle } from "../../lib/dashboard-layout";
 const SOURCE = "https://interfax.com.ua/news/telecom/1196790.html";
 const revenuePerHour = 14_900_000_000 / (181 * 24);
 const money = (value: number) => value.toLocaleString("uk-UA", { maximumFractionDigits: 0 }) + " грн";
@@ -10,7 +11,7 @@ const valid = (value: string, max: number) => value.trim() !== "" && Number.isFi
 type Level = "normal" | "degraded" | "outage";
 type NetworkState = { available: boolean; operators?: { id: string; signals: { source: string; ratio: number; level: Level }[] }[] };
 type RegionsState = { available: boolean; regions?: { name: string; level: Level }[] };
-export function Impact() {
+export function Impact({ widget }: { widget?: WidgetHandle }) {
   const dialog = useRef<HTMLDialogElement>(null);
   // Ті самі ключі запитів, що й у блоках мережі: дані зі спільного кешу.
   const network = useQuery({ queryKey: ["context-network", "24h"], queryFn: () => api<NetworkState>("/context/network?window=24h"), refetchInterval: 5 * 60_000 });
@@ -22,7 +23,7 @@ export function Impact() {
   const [hours, setHours] = useState("1"), [share, setShare] = useState("10"), [churn, setChurn] = useState("1000"), [work, setWork] = useState("1");
   const loss = valid(hours, 240) && valid(share, 100) ? revenuePerHour * Number(hours) * Number(share) / 100 : null;
   return <>
-    <Card className="span-4" title="Вплив на Vodafone" actions={<Badge>Припущення</Badge>} footer={<button className="btn btn-outline btn-sm" type="button" onClick={() => dialog.current?.showModal()}><Calculator size={14} aria-hidden="true" />Розрахувати сценарій</button>}>
+    <Card widget={widget} className="span-4" title="Вплив на Vodafone" actions={<Badge>Припущення</Badge>} footer={<button className="btn btn-outline btn-sm" type="button" onClick={() => dialog.current?.showModal()}><Calculator size={14} aria-hidden="true" />Розрахувати сценарій</button>}>
       <div className={incident ? "impact-state impact-state-alert" : "impact-state"}>
         <strong>{!known ? "Стан мережі зараз невідомий" : incident ? "Є раптове просідання зв'язку" : "Збоїв не зафіксовано"}</strong>
         <span>{!known ? "Оцінку втрат почнемо рахувати, щойно з'являться вимірювання." : incident

@@ -1,6 +1,7 @@
 import type { DashboardResponse, DashboardWindow } from "@ufv/shared/dashboard";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowUpRight, ShieldCheck, ShieldAlert } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, RotateCcw, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Fragment, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Alert, Badge, Card, PageHeader, Tabs } from "../components/ui";
 import { HourlyBars } from "../components/charts/HourlyBars";
@@ -19,10 +20,12 @@ import { Briefing } from "../components/dashboard/Briefing";
 import { WebMentions } from "../components/dashboard/WebMentions";
 import { quantity } from "../lib/plural";
 import { dailyBuckets } from "../lib/chart-buckets";
+import { useDashboardLayout } from "../lib/dashboard-layout";
 import { api, can, errorText, type Me } from "../lib/api";
 
 const time = (value: string | null) => value ? new Date(value).toLocaleString("uk-UA", { timeZone: "Europe/Kyiv", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "немає даних";
 const SERVICE_NAMES: Record<string, string> = { telegram: "Telegram", rss: "RSS", "collector-telegram": "Telegram", "collector-rss": "RSS", processor: "Обробка", analyst: "AI-аналітик" };
+const BASE_WIDGETS = ["network", "reviews", "regions", "now", "dynamics", "reactions", "sources", "spread", "impact", "slot", "competitors", "summary"];
 
 export function Dashboard({ me }: { me: Me | undefined }) {
   const [params, setParams] = useSearchParams();
@@ -33,15 +36,21 @@ export function Dashboard({ me }: { me: Me | undefined }) {
   const workflows = useQuery({ queryKey: ["workflows"], queryFn: () => api<{ items: { id: string; name: string }[] }>("/workflows") });
   const data = query.data;
   const calculating = data?.aggregation?.complete === false;
-  const waiting = <div className="chart-no-data">Перераховуємо повні агрегати…</div>;
+  const webMentions = can(me, "incident", "edit");
+  const layout = useDashboardLayout(webMentions ? [...BASE_WIDGETS, "web"] : BASE_WIDGETS);
   const setFilter = (key: string, next: string) => { const copy = new URLSearchParams(params); copy.set(key, next); setParams(copy); };
   return <div className="dashboard">
-    <PageHeader title="Сьогодні" actions={<RefreshControl workflow={workflow} admin={can(me, "collector", "manage")} fetching={query.isFetching} refetch={() => { void query.refetch(); }} />} />
+    <PageHeader title="Сьогодні" actions={<>
+      <button type="button" className="btn btn-outline btn-sm" aria-pressed={layout.editing} onClick={() => layout.setEditing(!layout.editing)}><LayoutGrid size={14} aria-hidden="true" />{layout.editing ? "Готово" : "Налаштувати вигляд"}</button>
+      {layout.editing && layout.customised && <button type="button" className="btn btn-ghost btn-sm" onClick={layout.reset}><RotateCcw size={14} aria-hidden="true" />Скинути</button>}
+      <RefreshControl workflow={workflow} admin={can(me, "collector", "manage")} fetching={query.isFetching} refetch={() => { void query.refetch(); }} />
+    </>} />
     <div className="dashboard-controls">
       <Tabs label="Період дашборда" value={window} onChange={v => setFilter("window", v)} items={[{ value: "24h", label: "Сьогодні" }, { value: "7d", label: "7 днів" }, { value: "30d", label: "30 днів" }]} />
       <select aria-label="Напрям моніторингу" value={workflow} onChange={e => setFilter("workflow_id", e.target.value)}>{(workflows.data?.items ?? [{ id: "1", name: "Vodafone та український телеком" }]).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select>
       <span className="dashboard-period">{window === "24h" ? "Останні 24 години" : `Останні ${window === "7d" ? "7" : "30"} днів`} · Україна</span>
     </div>
+    {layout.editing && <p className="dashboard-layout-hint" role="status">Стрілками змініть порядок блоків, «шевроном» згорніть непотрібні. Порядок і згорнуті блоки зберігаються лише в цьому браузері й не змінюють дані та права.</p>}
     {query.isError && <Alert tone="danger"><div>Не вдалося оновити дашборд. {errorText(query.error)}</div><button className="btn btn-outline btn-sm" type="button" onClick={() => query.refetch()}>Спробувати знову</button></Alert>}
     {!data && query.isPending && <div className="dashboard-loading" role="status" aria-busy="true"><span>Збираємо показники з дозволених матеріалів…</span><div className="dashboard-skeleton" /><div className="dashboard-skeleton" /></div>}
     {data && <div className="dashboard-data" aria-busy={query.isFetching}>
@@ -59,26 +68,37 @@ export function Dashboard({ me }: { me: Me | undefined }) {
       </div>
       {data.vodafone_7d && <div className="dashboard-coverage"><Link className="btn btn-outline" to={data.vodafone_7d.href}>Vodafone: згадки за 7 днів — {count(data.vodafone_7d.count)}<ArrowUpRight size={16} aria-hidden="true" /></Link><span>Відсутність згадок за 24 години не означає відсутності даних за тиждень.</span></div>}
       {data.analysis_coverage && <div className="dashboard-coverage"><strong>{data.analysis_coverage.label || "Семантичний відбір"}{data.analysis_coverage.cutoff_at ? ` · зріз ${time(data.analysis_coverage.cutoff_at)}` : ""}</strong><span>{data.analysis_coverage.note}</span>{data.analysis_coverage.pending !== undefined && <Link to={`/inbox?workflow_id=${workflow}`}>Очікує семантичної перевірки: {count(data.analysis_coverage.pending)} · відкрити увесь вхід</Link>}</div>}
-      <div className="dashboard-grid">
-        <NetworkHealth window={window} />
-        <AppReviews />
-        <RegionsHealth />
-        <Card className="dashboard-now span-7" title="Що зараз" actions={<Badge>Останні 24 год</Badge>} footer={<Link className="btn btn-ghost btn-sm" to={`/feed?workflow_id=${workflow}&decision=${data.visibility === "accepted" ? "accepted" : "visible"}`}>Відкрити стрічку<ArrowUpRight size={14} aria-hidden="true" /></Link>}><Signals data={data} /></Card>
-        <Card className="span-5" title={window !== "24h" ? "Динаміка за днями" : "Динаміка згадок"}>{calculating ? waiting : <HourlyBars data={window === "7d" ? dailyBuckets(data.hourly, data.start, data.end) : data.hourly} daily={window !== "24h"} />}</Card>
-        <Card className="span-4" title="Реакції" actions={<Badge title={data.reactions.note}>Евристика</Badge>} footer={<span className="note">{calculating ? "Очікуємо повного зрізу" : `${quantity(data.reactions.observed_items, "матеріал", "матеріали", "матеріалів")} із реакціями · реакція на допис не дорівнює ставленню до оператора`}</span>}>{calculating ? waiting : <ShareBar negative={data.reactions.negative} ironic={data.reactions.ironic} sad={data.reactions.sad} positive={data.reactions.positive} href={data.reactions.href} />}{data.reaction_freshness && !calculating && <ReactionTiming data={data.reaction_freshness} />}</Card>
-        <Card className="span-4" title="Джерела згадок">{calculating ? waiting : <BarList data={data.sources.slice(0, 5).map(s => ({ id: s.id, label: s.title, value: s.count, href: s.href }))} />}</Card>
-        <Card className="span-4" title="Поширення" actions={<Badge title="Перепублікації не доводять незалежність джерел.">Збіги змісту</Badge>}>
-          {calculating ? waiting : data.aggregated ? <div className="chart-no-data">Окремі поширення доступні у вікнах 24 год і 7 днів</div> : data.spread.length ? <div className="spread-list">{data.spread.slice(0, 3).map(s => <Link key={s.id} to={s.href}><strong>{quantity(s.count, "поширення", "поширення", "поширень")}</strong><span>{quantity(s.source_count, "джерело", "джерела", "джерел")}</span><small>{s.third_repost_seconds === null ? "Третю перепублікацію не зафіксовано" : `До 3-го поширення: ${count(s.third_repost_seconds / 60)} хв`}</small></Link>)}</div> : <div className="chart-no-data">Збігів змісту у вибраному вікні немає</div>}
-        </Card>
-        <Impact />
-        <IntegrationSlot />
-        <Card className="span-4" title="Конкуренти">{calculating ? waiting : <BarList data={data.competitors.map(c => ({ id: c.brand, label: c.brand === "kyivstar" ? "Київстар" : c.brand === "lifecell" ? "lifecell" : c.brand, value: c.count, href: c.href }))} />}</Card>
-        <Summary summary={data.ai} />
-        {can(me, "incident", "edit") && <WebMentions />}
-      </div>
+      <DashboardGrid data={data} window={window} workflow={workflow} calculating={!!calculating} layout={layout} webMentions={webMentions} />
       <details className="dashboard-methodology"><summary>Методика, покриття та обмеження</summary><ul>{data.methodology.map(line => <li key={line}>{line}</li>)}</ul><MetricsTable data={data} /><div className="dashboard-method-meta">Відбір: {data.visibility === "accepted" ? "лише прийняті матеріали" : "прийняті та на перевірці"}. Зріз: {time(data.start)} – {time(data.end)} (місцевий час).</div></details>
     </div>}
   </div>;
+}
+
+/** Порядок блоків задає користувач; склад — завжди код і права ролі. */
+function DashboardGrid({ data, window, workflow, calculating, layout, webMentions }: {
+  data: DashboardResponse; window: DashboardWindow; workflow: string; calculating: boolean;
+  layout: ReturnType<typeof useDashboardLayout>; webMentions: boolean;
+}) {
+  const waiting = <div className="chart-no-data">Перераховуємо повні агрегати…</div>;
+  const widget = layout.handle;
+  const nodes: Record<string, ReactNode> = {
+    network: <NetworkHealth window={window} widget={widget("network", "Чи працює мережа")} />,
+    reviews: <AppReviews widget={widget("reviews", "Відгуки App Store")} />,
+    regions: <RegionsHealth widget={widget("regions", "Зв'язок по областях")} />,
+    now: <Card widget={widget("now", "Що зараз")} className="dashboard-now span-7" title="Що зараз" actions={<Badge>Останні 24 год</Badge>} footer={<Link className="btn btn-ghost btn-sm" to={`/feed?workflow_id=${workflow}&decision=${data.visibility === "accepted" ? "accepted" : "visible"}`}>Відкрити стрічку<ArrowUpRight size={14} aria-hidden="true" /></Link>}><Signals data={data} /></Card>,
+    dynamics: <Card widget={widget("dynamics", window !== "24h" ? "Динаміка за днями" : "Динаміка згадок")} className="span-5" title={window !== "24h" ? "Динаміка за днями" : "Динаміка згадок"}>{calculating ? waiting : <HourlyBars data={window === "7d" ? dailyBuckets(data.hourly, data.start, data.end) : data.hourly} daily={window !== "24h"} />}</Card>,
+    reactions: <Card widget={widget("reactions", "Реакції")} className="span-4" title="Реакції" actions={<Badge title={data.reactions.note}>Евристика</Badge>} footer={<span className="note">{calculating ? "Очікуємо повного зрізу" : `${quantity(data.reactions.observed_items, "матеріал", "матеріали", "матеріалів")} із реакціями · реакція на допис не дорівнює ставленню до оператора`}</span>}>{calculating ? waiting : <ShareBar negative={data.reactions.negative} ironic={data.reactions.ironic} sad={data.reactions.sad} positive={data.reactions.positive} href={data.reactions.href} />}{data.reaction_freshness && !calculating && <ReactionTiming data={data.reaction_freshness} />}</Card>,
+    sources: <Card widget={widget("sources", "Джерела згадок")} className="span-4" title="Джерела згадок">{calculating ? waiting : <BarList data={data.sources.slice(0, 5).map(s => ({ id: s.id, label: s.title, value: s.count, href: s.href }))} />}</Card>,
+    spread: <Card widget={widget("spread", "Поширення")} className="span-4" title="Поширення" actions={<Badge title="Перепублікації не доводять незалежність джерел.">Збіги змісту</Badge>}>
+      {calculating ? waiting : data.aggregated ? <div className="chart-no-data">Окремі поширення доступні у вікнах 24 год і 7 днів</div> : data.spread.length ? <div className="spread-list">{data.spread.slice(0, 3).map(s => <Link key={s.id} to={s.href}><strong>{quantity(s.count, "поширення", "поширення", "поширень")}</strong><span>{quantity(s.source_count, "джерело", "джерела", "джерел")}</span><small>{s.third_repost_seconds === null ? "Третю перепублікацію не зафіксовано" : `До 3-го поширення: ${count(s.third_repost_seconds / 60)} хв`}</small></Link>)}</div> : <div className="chart-no-data">Збігів змісту у вибраному вікні немає</div>}
+    </Card>,
+    impact: <Impact widget={widget("impact", "Вплив на Vodafone")} />,
+    slot: <IntegrationSlot widget={widget("slot", "Стан мережі")} />,
+    competitors: <Card widget={widget("competitors", "Конкуренти")} className="span-4" title="Конкуренти">{calculating ? waiting : <BarList data={data.competitors.map(c => ({ id: c.brand, label: c.brand === "kyivstar" ? "Київстар" : c.brand === "lifecell" ? "lifecell" : c.brand, value: c.count, href: c.href }))} />}</Card>,
+    summary: <Summary summary={data.ai} widget={widget("summary", "Зведення періоду")} />,
+    ...(webMentions ? { web: <WebMentions widget={widget("web", "Свіжі згадки з інтернету")} /> } : {}),
+  };
+  return <div className="dashboard-grid">{layout.order.map(id => nodes[id] ? <Fragment key={id}>{nodes[id]}</Fragment> : null)}</div>;
 }
 
 function ReactionTiming({ data }: { data: NonNullable<DashboardResponse["reaction_freshness"]> }) {

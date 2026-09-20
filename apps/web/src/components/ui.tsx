@@ -1,6 +1,7 @@
-import { CircleAlert, CircleCheck, Info, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, CircleAlert, CircleCheck, Info, X } from "lucide-react";
 import { useEffect, useRef, type ReactNode, type Ref } from "react";
 import type { Tone } from "../lib/labels";
+import type { WidgetHandle } from "../lib/dashboard-layout";
 
 export function PageHeader({ title, description, actions, breadcrumb }: {
   title: ReactNode; description?: ReactNode; actions?: ReactNode; breadcrumb?: ReactNode;
@@ -17,23 +18,46 @@ export function PageHeader({ title, description, actions, breadcrumb }: {
   );
 }
 
-export function Card({ title, description, actions, footer, className = "", children }: {
-  title?: ReactNode; description?: ReactNode; actions?: ReactNode; footer?: ReactNode; className?: string; children?: ReactNode;
+export function Card({ title, description, actions, footer, className = "", widget, children }: {
+  title?: ReactNode; description?: ReactNode; actions?: ReactNode; footer?: ReactNode; className?: string; widget?: WidgetHandle; children?: ReactNode;
 }) {
+  // Згорнутий блок лишає заголовок і його позначки: видно, що саме приховано.
+  const collapsed = widget?.collapsed ?? false;
   return (
-    <section className={`card ${className}`}>
-      {(title || actions) && (
+    <section className={`card ${className}${collapsed ? " card-collapsed" : ""}`}>
+      {(title || actions || widget) && (
         <div className="card-header">
           <div>
             {title && <h2 className="card-title">{title}</h2>}
-            {description && <p className="card-desc">{description}</p>}
+            {description && !collapsed && <p className="card-desc">{description}</p>}
           </div>
-          {actions && <div className="row">{actions}</div>}
+          {(actions || widget) && <div className="row">{actions}{widget && <WidgetTools widget={widget} />}</div>}
         </div>
       )}
-      {children && <div className="card-content">{children}</div>}
-      {footer && <div className="card-footer">{footer}</div>}
+      {!collapsed && children && <div className="card-content">{children}</div>}
+      {!collapsed && footer && <div className="card-footer">{footer}</div>}
     </section>
+  );
+}
+
+function WidgetTools({ widget }: { widget: WidgetHandle }) {
+  const { name, collapsed, editing, position, total } = widget;
+  return (
+    <div className="widget-tools">
+      {editing && (
+        <>
+          <span className="widget-position">{position}/{total}</span>
+          <button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label={`Перемістити «${name}» вище`}
+            disabled={position <= 1} onClick={() => widget.onMove(-1)}><ArrowUp size={16} aria-hidden="true" /></button>
+          <button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label={`Перемістити «${name}» нижче`}
+            disabled={position >= total} onClick={() => widget.onMove(1)}><ArrowDown size={16} aria-hidden="true" /></button>
+        </>
+      )}
+      <button type="button" className="btn btn-ghost btn-icon btn-sm" aria-expanded={!collapsed}
+        aria-label={`${collapsed ? "Розгорнути" : "Згорнути"} «${name}»`} onClick={widget.onToggle}>
+        {collapsed ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronUp size={16} aria-hidden="true" />}
+      </button>
+    </div>
   );
 }
 

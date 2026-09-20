@@ -3,6 +3,7 @@ import { ExternalLink } from "lucide-react";
 import { api } from "../../lib/api";
 import { plural } from "../../lib/plural";
 import { Badge, Card } from "../ui";
+import type { WidgetHandle } from "../../lib/dashboard-layout";
 
 type Region = { code: string; name: string; frontline?: boolean; ratio: number; level: "normal" | "degraded" | "outage"; lowest: number; lowest_at: string; percent: (number | null)[] };
 type RegionsResponse = { available: false; reason: string } | { available: true; fetched_at: string; regions: Region[] };
@@ -14,13 +15,13 @@ const change = (ratio: number) => `−${Math.max(0, Math.round((1 - ratio) * 100
 const clock = (iso: string) => new Date(iso).toLocaleString("uk-UA", { timeZone: "Europe/Kyiv", hour: "2-digit", minute: "2-digit" });
 
 /** Раптові зміни зв'язності інтернету по областях за добу (усі оператори разом). Хронічних руйнувань не показує — див. примітку в блоці. */
-export function RegionsHealth() {
+export function RegionsHealth({ widget }: { widget?: WidgetHandle }) {
   const query = useQuery({ queryKey: ["context-regions"], queryFn: () => api<RegionsResponse>("/context/regions"), refetchInterval: 10 * 60_000 });
   const data = query.data, ready = data?.available ? data : null;
   const troubled = ready?.regions.filter((r) => r.level !== "normal") ?? [];
   const dipped = ready ? [...ready.regions].sort((a, b) => a.lowest - b.lowest)[0] : undefined;
   return (
-    <Card className="span-12 context-card" title="Зв'язок по областях · % від звичного рівня доби"
+    <Card widget={widget} className="span-12 context-card" title="Зв'язок по областях · % від звичного рівня доби"
       actions={ready && (troubled.length
         ? <Badge tone={troubled.some((r) => r.level === "outage") ? "danger" : "warning"} dot>{troubled.length} {plural(troubled.length, "область", "області", "областей")} з раптовим просіданням</Badge>
         : <Badge tone="success" dot>Раптових збоїв немає</Badge>)}

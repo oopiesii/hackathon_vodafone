@@ -5,20 +5,21 @@ import { api, send } from "../../lib/api";
 import { formatDateTime } from "../../lib/format";
 import { brandName } from "../../lib/plural";
 import { Badge, Card } from "../ui";
+import type { WidgetHandle } from "../../lib/dashboard-layout";
 
 type Mention = { title: string; url: string; publisher: string; published_on: string; summary: string; brand: string };
 type State = { result: { searched_at: string; seconds: number; items: Mention[] } | null; searching: boolean };
 const day = (iso: string) => (iso ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}` : "дата невідома");
 
 /** Свіжі згадки з інтернету: вебпошук локального рантайму. Це видача пошуку, а не зібрані матеріали, тому в метрики вона не входить. */
-export function WebMentions() {
+export function WebMentions({ widget }: { widget?: WidgetHandle }) {
   const cache = useQueryClient();
   const runtime = useQuery({ queryKey: ["analyst-runtime"], queryFn: () => api<{ enabled: boolean }>("/analyst/runtime"), refetchInterval: 60_000 });
   const state = useQuery({ queryKey: ["web-mentions"], queryFn: () => api<State>("/analyst/web-mentions") });
   const search = useMutation({ mutationFn: () => send<State>("/analyst/web-mentions", "POST"), onSuccess: (next) => cache.setQueryData(["web-mentions"], next) });
   const live = runtime.data?.enabled === true, busy = search.isPending || state.data?.searching === true, result = state.data?.result;
   return (
-    <Card className="span-12 context-card" title="Свіжі згадки з інтернету"
+    <Card widget={widget} className="span-12 context-card" title="Свіжі згадки з інтернету"
       actions={<><Badge tone="secondary" title="Результати вебпошуку не проходять збір, дедуплікацію й відбір, тому не входять до показників дашборда.">Пошук · поза метриками</Badge>
         <button type="button" className="btn btn-outline btn-sm" disabled={!live || busy} onClick={() => search.mutate()}><RefreshCw size={14} aria-hidden="true" />{busy ? "Шукаю…" : "Знайти свіже"}</button></>}
       footer={<span className="note context-source">Вебпошук локального рантайму Claude Code · заголовки й посилання з видачі пошуку, суть — одне речення моделі · перевіряйте за першоджерелом{result ? ` · знайдено ${formatDateTime(result.searched_at)} за ${result.seconds} с` : ""}</span>}>

@@ -3,6 +3,7 @@ import { ExternalLink } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { api } from "../../lib/api";
 import { Badge, Card, Tabs } from "../ui";
+import type { WidgetHandle } from "../../lib/dashboard-layout";
 
 type Source = "ping-slash24" | "bgp";
 type Signal = { source: Source; from: number; step: number; baseline: number; last: number; lowest: number; ratio: number; level: "normal" | "degraded" | "outage"; percent: (number | null)[] };
@@ -28,7 +29,7 @@ const smooth = (points: (number | null)[]) => points.map((v, i) => {
 const clock = (ms: number, withDate: boolean) => new Date(ms).toLocaleString("uk-UA", { timeZone: "Europe/Kyiv", ...(withDate ? { day: "2-digit", month: "2-digit" } : {}), hour: "2-digit", minute: "2-digit" });
 
 /** Зовнішні вимірювання зв'язності мереж операторів (IODA). Це не телеметрія оператора: слот внутрішнього API лишається окремим блоком. */
-export function NetworkHealth({ window }: { window: "24h" | "7d" | "30d" }) {
+export function NetworkHealth({ window, widget }: { window: "24h" | "7d" | "30d"; widget?: WidgetHandle }) {
   const span = window === "24h" ? "24h" : "7d";
   const [source, setSource] = useState<Source>("ping-slash24");
   const query = useQuery({ queryKey: ["context-network", span], queryFn: () => api<NetworkResponse>(`/context/network?window=${span}`), refetchInterval: 5 * 60_000 });
@@ -37,7 +38,7 @@ export function NetworkHealth({ window }: { window: "24h" | "7d" | "30d" }) {
   const lines = ready?.operators.flatMap((o) => { const s = o.signals.find((x) => x.source === source); return s ? [{ ...o, signal: { ...s, percent: smooth(s.percent) } }] : []; }) ?? [];
   const own = lines.find((l) => l.id === "vodafone");
   return (
-    <Card className="span-7 context-card" title="Чи працює мережа"
+    <Card widget={widget} className="span-7 context-card" title="Чи працює мережа"
       actions={own ? <Badge tone={LEVEL[own.signal.level].tone} dot title="Евристика: зараз ≥ 90% медіани вікна — норма, 50–90% — просідання, нижче — збій.">Vodafone · {LEVEL[own.signal.level].label}</Badge> : <Badge tone="secondary">Зовнішні вимірювання</Badge>}
       footer={<span className="note context-source">
         Дані: <a href="https://ioda.inetintel.cc.gatech.edu/asn/21497" target="_blank" rel="noopener noreferrer">IODA, Georgia Tech<ExternalLink size={12} aria-hidden="true" /></a>
