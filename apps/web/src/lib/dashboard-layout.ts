@@ -35,7 +35,14 @@ function write(state: Stored) {
 export function reconcile(stored: string[], defaults: string[]) {
   const known = stored.filter((id, index) => defaults.includes(id) && stored.indexOf(id) === index);
   const result = [...known];
-  defaults.forEach((id, index) => { if (!known.includes(id)) result.splice(Math.min(index, result.length), 0, id); });
+  // Відсутній блок ставимо одразу за найближчим сусідом із типового порядку, а не за
+  // абсолютним номером: список уже зсунутий збереженим вибором, тож абсолютна позиція
+  // розкидала б і збережений порядок, і порядок самих новачків.
+  for (const id of defaults) {
+    if (result.includes(id)) continue;
+    const previous = defaults.slice(0, defaults.indexOf(id)).filter(x => result.includes(x)).pop();
+    result.splice(previous ? result.indexOf(previous) + 1 : 0, 0, id);
+  }
   return result;
 }
 

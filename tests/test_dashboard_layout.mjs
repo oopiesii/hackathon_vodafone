@@ -29,3 +29,20 @@ test('жоден збережений порядок не приховує на�
     assert.deepEqual([...reconcile(stored, DEFAULTS)].sort(), [...DEFAULTS].sort());
   }
 });
+
+test('нові блоки зберігають типовий порядок між собою', () => {
+  // Збережено лише два блоки; решта має зʼявитись у своєму типовому порядку.
+  const out = reconcile(['summary', 'now'], DEFAULTS);
+  const fresh = out.filter(id => id !== 'summary' && id !== 'now');
+  assert.deepEqual(fresh, DEFAULTS.filter(id => id !== 'summary' && id !== 'now'));
+});
+
+test('збережене сусідство не розривається новими блоками', () => {
+  const out = reconcile(['summary', 'now'], DEFAULTS);
+  assert.equal(out.indexOf('now'), out.indexOf('summary') + 1, `порядок: ${out.join(', ')}`);
+});
+
+test('порожній збережений порядок не змінює типовий', () => {
+  assert.deepEqual(reconcile([], DEFAULTS), DEFAULTS);
+  assert.deepEqual(reconcile(['зайве'], DEFAULTS), DEFAULTS);
+});
