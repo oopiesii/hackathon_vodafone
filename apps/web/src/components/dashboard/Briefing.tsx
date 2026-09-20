@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { api, send } from "../../lib/api";
 import { Badge } from "../ui";
+import { brandName } from "../../lib/plural";
 
 // Ті самі ключі запитів, що й у блоках нижче: дані беруться зі спільного кешу, зайвих звернень до API немає.
 type Level = "normal" | "degraded" | "outage";
@@ -34,7 +35,10 @@ function build(d: DashboardResponse, network?: Network, regions?: Regions, revie
   const troubled = regions?.available ? (regions.regions ?? []).filter((r) => r.level !== "normal") : [];
   const app = reviews?.available ? reviews.apps?.find((a) => a.id === "vodafone") : undefined;
   const rivals = reviews?.available ? (reviews.apps ?? []).filter((a) => a.id !== "vodafone") : [];
-  const critical = d.signals.filter((s) => s.level === "h");
+  // Критичність рахується так само, як статус бренду в API: вирішені сигнали не враховуються,
+  // а сигнал про конкурента не видається за нашу проблему.
+  const critical = d.signals.filter((s) => s.level === "h" && s.action !== "resolved");
+  const ourCritical = critical.find((s) => s.brand === "vodafone") ?? critical[0];
   const mentions = d.metrics.mentions.value ?? 0, negative = d.metrics.negative_share.value;
   const rivalMentions = d.competitors.reduce((a, c) => a + c.count, 0), vodafone = d.vodafone_7d?.count;
   const themes = app ? THEMES.map(([name, re]) => [name, app.recent_negative.filter((r) => re.test(`${r.title} ${r.text}`)).length] as const).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]) : [];
@@ -42,7 +46,7 @@ function build(d: DashboardResponse, network?: Network, regions?: Regions, revie
   const tone: Brief["tone"] = own?.level === "outage" || troubled.some((r) => r.level === "outage") || critical.length ? "critical"
     : own?.level === "degraded" || troubled.length || (negative !== null && negative >= 35) ? "attention" : "calm";
   const headline = own && own.level !== "normal" ? `Мережа Vodafone доступна з інтернету гірше, ніж зазвичай: ${pct(capped(own.ratio), 1)} від звичного рівня.`
-    : critical.length ? `Критичний сигнал: ${critical[0]!.title}`
+    : ourCritical ? `Критичний сигнал: ${ourCritical.title}${ourCritical.brand === "vodafone" ? "" : ` — ${brandName(ourCritical.brand)}, не Vodafone`}`
     : troubled.length ? `Раптове просідання зв'язку: ${troubled.slice(0, 3).map((r) => `${r.name} ${drop(r.ratio)}`).join(", ")}. Звідти варто чекати скарг.`
     : negative !== null && negative >= 35 ? `Масових збоїв немає, але негативу багато: ${int(Math.round(negative))}% реакцій під тематичними постами — негатив або іронія.`
     : "Спокійно: масових збоїв і критичних сигналів немає.";
