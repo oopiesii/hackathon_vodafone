@@ -3,6 +3,14 @@ export type DashboardWindow = '24h' | '7d' | '30d';
 export type DashboardMetric = { value:number|null; unit:string; href:string; series:number[]; measured:number; note:string; attention?:number; attention_note?:string };
 export type DashboardBucket = { at:string; count:number; topics:Record<string,number>; href:string };
 export type DashboardSignal = { id:string; title:string; topic:string; brand:string; level:'h'|'m'|'l'; count:number; sources:number; spread:number; action:'none'|'investigating'|'responding'|'resolved'; href:string; evidence:Array<{id:string;url:string;quote:string;published_at:string|null}>; reason:string };
+export type BrandSummary = {
+ brand:string; count:number; negative:number;
+ reaction_negative_share:number|null; reaction_total:number;
+ topics:Array<{topic:string;count:number;href:string}>;
+ latest:Array<{id:string;quote:string;url:string|null;published_at:string|null;source_title:string|null;topic:string;negative:boolean;href:string}>;
+ href:string;
+};
+
 export type DashboardResponse = {
  version:1; aggregation?:{complete:boolean;dirty_sources?:number;source_count?:number;generated_at:string|null;note:string}; aggregate_updated_at?:string|null; workflow_id:string; window:DashboardWindow; start:string; end:string; timezone:'Europe/Kyiv'; generated_at:string; aggregated:boolean;
  visibility:'accepted'|'accepted_review';
@@ -21,6 +29,8 @@ export type DashboardResponse = {
  lag_by_service:Array<{service:string;median_seconds:number|null;measured:number;href:string}>;
  freshness:Array<{service:string;enabled:boolean;last_success_at:string|null;heartbeat_at:string|null}>;
  competitors:Array<{brand:string;count:number;negative:number;href:string}>;
+ /** Порівняння брендів для окремої сторінки: ті самі матеріали вікна, згруповані за брендом. */
+ brands:BrandSummary[];
  ai:DashboardSummary;
  vodafone_7d?:{count:number;href:string};
  analysis_coverage?:{label?:string;cutoff_at:string|null;pending?:number;note:string};

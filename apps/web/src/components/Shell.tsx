@@ -1,4 +1,4 @@
-import { Activity, LayoutDashboard, Inbox, LogOut, Menu, Moon, Newspaper, Radio, Sun, Users, Wrench } from "lucide-react";
+import { Activity, Inbox, LayoutDashboard, LogOut, Menu, Moon, Newspaper, Radio, Sun, Swords, Users, Wrench } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router";
 import { can, type Me } from "../lib/api";
@@ -56,6 +56,7 @@ export function Shell({ me, children }: { me: Me | undefined; children: ReactNod
             <div className="nav-label">Моніторинг</div>
             <NavLink className="nav-link" to="/" end><LayoutDashboard size={16} aria-hidden="true" />Сьогодні</NavLink>
             <NavLink className="nav-link" to="/feed"><Newspaper size={16} aria-hidden="true" />Стрічка</NavLink>
+            <NavLink className="nav-link" to="/competitors"><Swords size={16} aria-hidden="true" />Конкуренти</NavLink>
             {can(me, "incident", "edit") && <NavLink className="nav-link" to="/analysis"><Activity size={16} aria-hidden="true" />Аналіз і пошук</NavLink>}
             {can(me, "incident", "edit") && <NavLink className="nav-link" to="/inbox"><Inbox size={16} aria-hidden="true" />Увесь вхід</NavLink>}
           </div>

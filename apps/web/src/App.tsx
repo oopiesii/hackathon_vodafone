@@ -5,6 +5,7 @@ import { Shell } from "./components/Shell";
 import { api, can, errorText, type Me } from "./lib/api";
 import { authClient } from "./lib/auth-client";
 import { AdminUsers } from "./pages/AdminUsers";
+import { Competitors } from "./pages/Competitors";
 import { Dashboard } from "./pages/Dashboard";
 import { Feed } from "./pages/Feed";
 import { Login } from "./pages/Login";
@@ -81,6 +82,7 @@ function PrivateApp({ me }: { me: Me }) {
       <Routes>
         <Route path="/" element={<Dashboard me={me} />} />
         <Route path="/feed" element={<Feed me={me} />} />
+        <Route path="/competitors" element={<Competitors />} />
         {can(me, "incident", "edit") && <Route path="/analysis" element={<Analysis />} />}
         {can(me, "incident", "edit") && <Route path="/inbox" element={<Incoming me={me} />} />}
         {can(me, "collector", "manage") && <Route path="/sources" element={<Sources />} />}

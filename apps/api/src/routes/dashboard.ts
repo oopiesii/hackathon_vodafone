@@ -184,6 +184,25 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
  const counts:DashboardResponse['counts']={accepted:count('accepted')};
  if(review)Object.assign(counts,{review:count('review'),collected:window==='30d'?sum(rollups.map(i=>i.count)):sum(operatorRows.map(i=>i.count)),rejected:count('rejected'),pending:count('pending')});
  const criticalIds=current.filter(i=>signals.some(s=>s.level==='h'&&s.topic===i.topic&&s.brand===i.brand)&&(i.negative||anomalyIds.has(String(i.id)))).map(i=>String(i.id));
+ // Порівняння брендів рахується з уже завантаженого зрізу: нових запитів до БД немає.
+ const brandSummary=(brand:string):DashboardResponse['brands'][number]=>{
+  const rows=(window==='30d'?aggregate:items).filter((i:Item)=>i.brand===brand);
+  const byTopicBrand=new Map<string,number>();
+  for(const row of rows){const key=row.topic||'other';byTopicBrand.set(key,(byTopicBrand.get(key)||0)+(window==='30d'?Number(row.count):1));}
+  const negativeReactions=window==='30d'?sum(rows.map(r=>Number(r.reaction_negative))):reactions(rows).negative;
+  const totalReactions=window==='30d'
+   ? sum(rows.flatMap(r=>[Number(r.reaction_negative),Number(r.reaction_ironic),Number(r.reaction_sad),Number(r.reaction_positive)]))
+   : reactions(rows).total;
+  return {brand,
+   count:window==='30d'?sum(rows.map(r=>Number(r.count))):rows.length,
+   negative:window==='30d'?sum(rows.map(r=>Number(r.negative_count))):rows.filter(i=>i.negative).length,
+   reaction_negative_share:totalReactions?negativeReactions/totalReactions:null,reaction_total:totalReactions,
+   topics:[...byTopicBrand].map(([topic,count])=>({topic,count,href:href({brand,topic})})).sort((a,b)=>b.count-a.count).slice(0,4),
+   // Матеріали впорядковані за event_at зростанням, тож найновіші — в кінці. У місячному режимі текстів немає.
+   latest:window==='30d'?[]:rows.slice(-3).reverse().map((i:Item)=>({id:String(i.id),quote:i.quote,url:i.url,
+    published_at:i.published_at?iso(i.published_at):null,source_title:i.source_title??null,topic:i.topic,negative:!!i.negative,href:href({ids:String(i.id)})})),
+   href:href({brand})};
+ };
  const result:DashboardResponse={
   version:1,aggregation:window==='30d'?{complete:coverage.dirty_sources===0,...(review?{dirty_sources:coverage.dirty_sources,source_count:coverage.source_count}:{}),generated_at:coverage.generated_at,note:coverage.dirty_sources?'Згортки перераховуються; неповні значення приховано.':'Атомарний зріз добових згорток.'}:undefined,aggregate_updated_at:window==='30d'&&rollups.length?iso(new Date(Math.min(...rollups.map(r=>time(r.generated_at))))):null,workflow_id:workflow,window,start:iso(start),end:iso(end),timezone:'Europe/Kyiv',generated_at:iso(end),aggregated:window==='30d',visibility:includeReview?'accepted_review':'accepted',
   brand_status:{level:brandLevel,title:{calm:'Спокійно',attention:'Увага',critical:'Критично',unknown:'Недостатньо даних'}[brandLevel],reason:brandLevel==='unknown'?(window==='30d'?'Статус зараз доступний у вікні 24 годин.':'За 24 години немає видимих згадок Vodafone.'):(activeBrand[0]?.title||'Правила не виявили високого сигналу.'),negative_delta_pp:delta,href:href({brand:'vodafone',from:iso(new Date(now-24*HOUR))})},
@@ -198,6 +217,7 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
   complaints:{count:complaints,per_hour:complaints/Math.min(hours,168),href:href({negative:'1',kind:'comment'}),note:'Негативні тематичні коментарі під постами на спостереженні, не доведені скарги; максимум 7 днів.'},lag_by_service:lagServices,
   freshness:freshnessRows.map(r=>({...r,last_success_at:r.last_success_at?iso(r.last_success_at):null,heartbeat_at:r.heartbeat_at?iso(r.heartbeat_at):null})),
   competitors:['kyivstar','lifecell'].map(brand=>{const rows=(window==='30d'?aggregate:items).filter(i=>i.brand===brand);return {brand,count:window==='30d'?sum(rows.map(i=>i.count)):rows.length,negative:window==='30d'?sum(rows.map(i=>i.negative_count)):rows.filter(i=>i.negative).length,href:href({brand})};}),
+  brands:['vodafone','kyivstar','lifecell'].map(brandSummary),
   ai:{status:'rules',label:'Зведення доступних матеріалів',summary:`За вікно — ${mentions} тематичних матеріалів. ${window==='30d'?'Місячні дані агреговані.':`Високий сигнал: ${criticalIds.length} матеріалів за 24 години.`}`,href:href()},
   methodology:['Часове вікно: останні 24 години / 7 днів; 30 календарних днів за місцевим часом України включно із сьогодні. Невідома дата публікації → час збору для включення до вікна, але не для затримки.',
    semantic?'Тематичність і тональність — актуальна Gemini-розмітка зі знімка, з перевіркою версії тексту та контексту. Нові, застарілі й сумнівні результати не входять до основних метрик. Рішення людини має пріоритет для тієї самої версії. Точність не виміряна.':'Негатив тексту визначено словниковими правилами; точність не виміряна. Сигнал не доводить реальний збій.',
@@ -224,7 +244,7 @@ export async function getDashboard(params:Record<string,string>,review:boolean):
  if(review)result.metrics.noise=metric(count('rejected'),'матеріалів',href({decision:'rejected'}),[],count('rejected'),'Відсіяно чинним аналізом або рішенням людини; це не доведена точність фільтра.');
  if(window==='30d'&&coverage.dirty_sources){
   for(const m of Object.values(result.metrics)){m.value=null;m.series=[];m.measured=0;m.note='Згортки перераховуються; неповний підсумок не показуємо.';}
-  result.hourly=[];result.topics=[];result.sources=[];result.competitors=[];result.lag_by_service=[];
+  result.hourly=[];result.topics=[];result.sources=[];result.competitors=[];result.brands=[];result.lag_by_service=[];
   result.reactions={negative:0,ironic:0,sad:0,positive:0,total:0,observed_items:0,negative_share:null,href:href(),note:'Згортки перераховуються.'};
   result.counts={accepted:0};result.complaints={count:0,per_hour:0,href:href({kind:'comment'}),note:'Згортки перераховуються.'};
   delete result.vodafone_7d;
