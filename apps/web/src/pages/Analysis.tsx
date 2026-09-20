@@ -29,7 +29,8 @@ const words:Record<string,string>={vodafone:'Vodafone',kyivstar:'Kyivstar',lifec
   regulation:'Регулювання',other:'Інше',running:'Триває',complete:'Завершено',partial:'Частково',failed:'Помилка',
   screening:'Семантичний відбір',details:'Тональність і причини',summary:'Підготовка зведення',post:'Допис',comment:'Коментар',group_message:'Повідомлення групи'};
 const moods=['negative','positive','neutral','mixed','unknown'];
-const day=(value:string|null)=>value?new Date(value).toLocaleDateString('uk-UA'):'Невідомо';
+// Дата має читатись однаково з рештою застосунку, незалежно від зони браузера глядача.
+const day=(value:string|null)=>value?new Date(value).toLocaleDateString('uk-UA',{timeZone:'Europe/Kyiv'}):'Невідомо';
 const num=(n:number|undefined)=>(n||0).toLocaleString('uk-UA');
 function Quotes({items}:{items:Evidence[]}){
   return <>{items.map((e,n)=><blockquote className="quote" key={n}>{e.quote}
