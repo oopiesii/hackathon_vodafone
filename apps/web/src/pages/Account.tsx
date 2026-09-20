@@ -21,7 +21,7 @@ function LocalRuntime() {
         <Switch checked={s?.enabled === true} disabled={!usable || toggle.isPending} ariaLabel="AI через локальний рантайм" label={s?.enabled ? "AI через локальний рантайм Claude Code" : "AI за правилами (рантайм вимкнено)"} onChange={(next) => toggle.mutate(next)} />
         {toggle.isError && <Alert tone="danger">{errorText(toggle.error)}</Alert>}
         {usable && <dl className="meta-list">
-          <dt>Рантайм і модель</dt><dd>{s.runtime} · {s.model} · effort {s.effort}</dd>
+          <dt>Рантайм і модель</dt><dd>{[s.runtime, s.model, s.effort && `effort ${s.effort}`].filter(Boolean).join(" · ") || "місток не повідомив"}</dd>
           <dt>Викликів / помилок</dt><dd>{s.calls ?? 0} / {s.failures ?? 0}</dd>
           <dt>Остання відповідь</dt><dd>{s.last_ok_at ? `${formatDateTime(s.last_ok_at)} · ${((s.last_ms ?? 0) / 1000).toFixed(1)} с` : "ще не було"}</dd>
           {s.last_error && <><dt>Остання помилка</dt><dd>{s.last_error}</dd></>}

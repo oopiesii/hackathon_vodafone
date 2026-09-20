@@ -86,9 +86,9 @@ export function Feed({ me, shared = false, shareScopeId, workflowId = "1", title
 
       {scoped && <div className="feed-scope"><Badge tone="info">Зріз із дашборда</Badge><span>{searchParams.get("from") ? formatDateTime(searchParams.get("from")) : "Обрані матеріали"}{searchParams.get("until") ? ` – ${formatDateTime(searchParams.get("until"))}` : ""}</span><button className="btn btn-ghost btn-sm" type="button" onClick={() => setSearchParams({ workflow_id: workflow, decision })}>Скинути зріз</button></div>}
       <div className="stats">
-        <Stat label="Матеріалів за фільтрами">{data?.total.count ?? "—"}</Stat>
-        <Stat label="Публікацій">{data ? counts.post ?? 0 : "—"}</Stat>
-        <Stat label="Коментарів">{data ? counts.comment ?? 0 : "—"}</Stat>
+        <Stat label="Матеріалів за фільтрами">{data ? data.total.count.toLocaleString("uk-UA") : "—"}</Stat>
+        <Stat label="Публікацій">{data ? (counts.post ?? 0).toLocaleString("uk-UA") : "—"}</Stat>
+        <Stat label="Коментарів">{data ? (counts.comment ?? 0).toLocaleString("uk-UA") : "—"}</Stat>
         <Stat label="Telegram-модуль">
           {data ? <Badge tone={data.telegram_enabled ? "success" : "secondary"} dot>{data.telegram_enabled ? "Увімкнено" : "Вимкнено"}</Badge> : "—"}
         </Stat>
@@ -172,7 +172,7 @@ export function Feed({ me, shared = false, shareScopeId, workflowId = "1", title
                 {item.manual_decision && <Badge tone="info">Рішення людини</Badge>}
                 {item.classifier === 'semantic' && <Badge tone="info" title={item.model ?? undefined}>AI-відбір</Badge>}
                 {item.action && item.action !== "none" && ACTION_STATUS[item.action] && <Badge tone={ACTION_STATUS[item.action]!.tone} title="Статус дій команди">{ACTION_STATUS[item.action]!.label}</Badge>}
-                <time className="item-time" title="Опубліковано">{formatDate(item.published_at)}</time>
+                <time className="item-time" title="Час публікації у джерелі">{item.published_at ? `Опубліковано ${formatDate(item.published_at)}` : "Дата публікації невідома"}</time>
               </div>
               {item.source_kind==='rss'&&<a href={item.source_url} target="_blank" rel="noopener noreferrer">Джерело: {item.channel_title}</a>}
               {item.classifier === 'semantic' && <p className="item-summary"><strong>Висновок AI:</strong> {item.summary}</p>}
