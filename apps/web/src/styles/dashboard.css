@@ -92,9 +92,10 @@
 .spread-list{display:grid;gap:4px}.spread-list a{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:8px 0;text-decoration:none;border-bottom:1px solid var(--border)}
 .spread-list a:last-child{border:0}.spread-list strong{font-size:var(--f-sm)}.spread-list span,.spread-list small{font-size:var(--f-xs);color:var(--muted-foreground)}.spread-list small{grid-column:1/-1}
 .dashboard-placeholder{display:flex;flex-direction:column;gap:8px;padding:8px 0;min-height:120px}.dashboard-placeholder>span{font-size:var(--f-sm);color:var(--muted-foreground)}
-.dashboard-summary p{font-size:var(--f-sm);max-width:90ch;line-height:1.7}
+.dashboard-summary p{font-size:var(--f-sm);max-width:70ch;line-height:1.7}
+.summary-limitations{max-width:70ch}
 .dashboard-methodology{border-top:1px solid var(--border);padding-top:8px;min-width:0}.dashboard-methodology summary{font-size:var(--f-sm);color:var(--muted-foreground)}
-.dashboard-methodology ul{padding-left:20px;font-size:var(--f-sm);color:var(--muted-foreground);max-width:90ch}.dashboard-methodology li+li{margin-top:8px}
+.dashboard-methodology ul{padding-left:20px;font-size:var(--f-sm);color:var(--muted-foreground);max-width:70ch}.dashboard-methodology li+li{margin-top:8px}
 .dashboard-methodology table a{display:inline-flex;align-items:center;min-height:32px}.dashboard-method-meta{margin-top:16px;font-size:var(--f-xs);color:var(--muted-foreground)}
 .dashboard-loading{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;color:var(--muted-foreground)}.dashboard-loading>span{grid-column:1/-1}.dashboard-skeleton{height:240px;border:1px solid var(--border);border-radius:var(--radius);background:var(--canvas)}
 @media(min-width:1440px){.content:has(.dashboard){max-width:1440px}}
@@ -132,7 +133,7 @@
 .reaction-method summary{cursor:pointer;min-height:32px;display:list-item}
 .reaction-method p{margin-top:8px}
 .reaction-ironic{fill:var(--data-accent);background:var(--data-accent)}
-.item-summary{font-size:var(--f-sm);line-height:1.5;margin:12px 0}
+.item-summary{font-size:var(--f-sm);line-height:1.5;margin:12px 0;max-width:64ch}
 .dashboard-coverage>a:not(.btn){display:inline-flex;align-items:center;min-height:32px}
 
 /* Налаштування вигляду: згортання й порядок блоків. Зберігається лише в браузері. */

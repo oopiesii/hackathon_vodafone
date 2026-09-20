@@ -1,6 +1,7 @@
 /* Контекстні блоки дашборда: зовнішня зв'язність мереж і відгуки App Store. Кольори даних — токени з dashboard.css. */
 .context-card .card-footer{min-height:0}
-.context-source{display:block;max-width:none;font-size:var(--f-xs)}
+/* Підпис джерела раніше не мав обмеження й давав рядки по 176 символів. */
+.context-source{display:block;max-width:72ch;font-size:var(--f-xs)}
 .context-source a{display:inline-flex;align-items:center;gap:4px;min-height:0}
 .context-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:8px}
 .context-head .note{flex:1;min-width:200px;font-size:var(--f-xs)}
@@ -52,7 +53,7 @@
 .network-verdict p span{display:block;margin-top:2px;font-size:var(--f-xs);font-weight:400;color:var(--muted-foreground)}
 
 /* Області */
-.regions-lead{margin-bottom:12px;font-size:var(--f-base);font-weight:500}
+.regions-lead{margin-bottom:12px;font-size:var(--f-base);font-weight:500;max-width:68ch}
 .regions-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
 .region{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name name" "spark value" "state state";gap:4px 8px;align-items:center;min-height:84px;padding:10px 12px;color:inherit;text-decoration:none;border:1px solid var(--border);border-radius:var(--radius);transition:border-color .15s}
 .region:hover{border-color:var(--ring)}
@@ -93,7 +94,7 @@
 .briefing-ask input{min-height:32px;padding:4px 10px;font-size:var(--f-sm)}
 @media(max-width:1000px){.briefing{grid-template-columns:minmax(0,1fr);gap:16px}.briefing-chat{margin-top:0}}
 @media(max-width:640px){.briefing{padding:16px}.briefing-headline{font-size:var(--f-lg)}}
-.regions-caveat{margin:-4px 0 12px;padding:8px 12px;font-size:var(--f-sm);color:var(--muted-foreground);background:var(--muted);border-radius:var(--radius-sm);max-width:none}
+.regions-caveat{margin:-4px 0 12px;padding:8px 12px;font-size:var(--f-sm);color:var(--muted-foreground);background:var(--muted);border-radius:var(--radius-sm);max-width:72ch}
 .regions-caveat strong{color:var(--foreground)}
 .region-value{white-space:nowrap}
 .region-value-flat{font-size:var(--f-xs);font-weight:400;color:var(--subtle-foreground)}

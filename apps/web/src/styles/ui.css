@@ -24,7 +24,7 @@
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);min-width:0}
 .card-header{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:8px 16px;padding:20px 24px 0}
 .card-title{font-size:var(--f-md);font-weight:600;letter-spacing:-.01em;line-height:1.4}
-.card-desc{margin-top:4px;color:var(--muted-foreground);max-width:76ch}
+.card-desc{margin-top:4px;color:var(--muted-foreground);max-width:62ch}
 .card-content{padding:20px 24px}
 .card-footer{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:16px 24px;border-top:1px solid var(--border)}
 .card-muted{background:var(--canvas);box-shadow:none;border-style:dashed}
@@ -60,7 +60,7 @@
 .form-grid>.full{grid-column:1/-1}
 .field{display:grid;gap:6px;min-width:0;align-content:start}
 .label{font-size:var(--f-base);font-weight:500;line-height:1.4}
-.hint{font-size:var(--f-sm);color:var(--muted-foreground);max-width:76ch}
+.hint{font-size:var(--f-sm);color:var(--muted-foreground);max-width:62ch}
 .check{display:flex;align-items:center;gap:8px;min-height:32px;font-weight:500;cursor:pointer}
 .form-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 
@@ -112,7 +112,8 @@
 .meta-list{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 16px;font-size:var(--f-sm)}
 .meta-list dt{color:var(--muted-foreground)}
 .meta-list dd{font-variant-numeric:tabular-nums}
-.note{font-size:var(--f-sm);color:var(--muted-foreground);max-width:88ch}
+/* ch — ширина «0»; у кирилиці 1ch ≈ 1,26 символа, тож 68ch це ≈86 символів. */
+.note{font-size:var(--f-sm);color:var(--muted-foreground);max-width:68ch}
 .cmd{display:block;padding:10px 12px;border:1px solid var(--border);overflow-x:auto;white-space:nowrap}
 /* minmax(0,1fr): широкий вміст (команда, сегменти) прокручується сам, а не розтягує колонку */
 .stack,.stack-sm,.stack-lg,.form,.section,.dialog-body{display:grid;grid-template-columns:minmax(0,1fr);min-width:0}
