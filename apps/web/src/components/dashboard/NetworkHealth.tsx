@@ -17,7 +17,7 @@ const SOURCE_HINT: Record<Source, string> = {
   bgp: "Маршрутизація BGP: скільки блоків адрес мережі видно в глобальному інтернеті, у % від медіани вікна. Згладжено ковзною медіаною 5 точок.",
 };
 const LEVEL = { normal: { label: "У нормі", tone: "success" }, degraded: { label: "Просідання", tone: "warning" }, outage: { label: "Збій", tone: "danger" } } as const;
-const VERDICT = { normal: "працює як зазвичай", degraded: "працює гірше, ніж зазвичай", outage: "масово недоступна" } as const;
+const VERDICT = { normal: "доступна з інтернету як зазвичай", degraded: "доступна з інтернету гірше, ніж зазвичай", outage: "масово недоступна з інтернету" } as const;
 const percent = (v: number | null | undefined) => (v == null ? "—" : `${v.toLocaleString("uk-UA", { maximumFractionDigits: 1 })}%`);
 // Зондування малих мереж шумить; для показу беремо ковзну медіану 5 точок. Таблиця значень показує те саме, що й графік.
 const smooth = (points: (number | null)[]) => points.map((v, i) => {
@@ -41,7 +41,7 @@ export function NetworkHealth({ window }: { window: "24h" | "7d" | "30d" }) {
       actions={own ? <Badge tone={LEVEL[own.signal.level].tone} dot title="Евристика: зараз ≥ 90% медіани вікна — норма, 50–90% — просідання, нижче — збій.">Vodafone · {LEVEL[own.signal.level].label}</Badge> : <Badge tone="secondary">Зовнішні вимірювання</Badge>}
       footer={<span className="note context-source">
         Дані: <a href="https://ioda.inetintel.cc.gatech.edu/asn/21497" target="_blank" rel="noopener noreferrer">IODA, Georgia Tech<ExternalLink size={12} aria-hidden="true" /></a>
-        {" "}· зовнішні вимірювання, не телеметрія оператора{ready ? ` · зафіксованих IODA збоїв за 30 днів: ${ready.events.length} · оновлено ${clock(Date.parse(ready.fetched_at), false)}` : ""}
+        {" "}· зовнішні вимірювання, не телеметрія оператора · телефони абонентів на зондування не відповідають, тож суто мобільний збій тут не видно{ready ? ` · зафіксованих IODA збоїв за 30 днів: ${ready.events.length} · оновлено ${clock(Date.parse(ready.fetched_at), false)}` : ""}
       </span>}>
       {query.isPending && <div className="chart-no-data" role="status">Отримуємо вимірювання…</div>}
       {data && !data.available && <div className="chart-no-data">{data.reason}</div>}
@@ -49,7 +49,7 @@ export function NetworkHealth({ window }: { window: "24h" | "7d" | "30d" }) {
       {ready && (lines.length ? <>
         {own && <div className="network-verdict">
           <strong className="network-value" title="Частка від звичного рівня за вікно; вище звичного показуємо як 100%.">{percent(Math.min(100, own.signal.ratio * 100))}</strong>
-          <p>Мережа Vodafone {VERDICT[own.signal.level]}.<span>{lines.filter((l) => l.id !== "vodafone").map((l) => `${l.name} — ${percent(Math.min(100, l.signal.ratio * 100))}`).join(" · ")}. 100% — звичний рівень мережі за {span === "7d" ? "тиждень" : "добу"}: показник ловить раптові збої, а не загальний стан покриття.</span></p>
+          <p>Мережа Vodafone {VERDICT[own.signal.level]}.<span>{lines.filter((l) => l.id !== "vodafone").map((l) => `${l.name} — ${percent(Math.min(100, l.signal.ratio * 100))}`).join(" · ")}. 100% — звичний рівень мережі за {span === "7d" ? "тиждень" : "добу"}: показник ловить раптові збої магістралі та фіксованого інтернету; мобільну радіомережу й окремі вишки ззовні не видно.</span></p>
         </div>}
         <Lines lines={lines} threshold={ready.thresholds.normal * 100} withDate={span === "7d"} />
         <details className="chart-table"><summary>Що саме вимірюється</summary>

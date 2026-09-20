@@ -41,7 +41,7 @@ function build(d: DashboardResponse, network?: Network, regions?: Regions, revie
 
   const tone: Brief["tone"] = own?.level === "outage" || troubled.some((r) => r.level === "outage") || critical.length ? "critical"
     : own?.level === "degraded" || troubled.length || (negative !== null && negative >= 35) ? "attention" : "calm";
-  const headline = own && own.level !== "normal" ? `Мережа Vodafone працює гірше, ніж зазвичай: ${pct(capped(own.ratio), 1)} від звичного рівня.`
+  const headline = own && own.level !== "normal" ? `Мережа Vodafone доступна з інтернету гірше, ніж зазвичай: ${pct(capped(own.ratio), 1)} від звичного рівня.`
     : critical.length ? `Критичний сигнал: ${critical[0]!.title}`
     : troubled.length ? `Раптове просідання зв'язку: ${troubled.slice(0, 3).map((r) => `${r.name} ${drop(r.ratio)}`).join(", ")}. Звідти варто чекати скарг.`
     : negative !== null && negative >= 35 ? `Масових збоїв немає, але негативу багато: ${int(Math.round(negative))}% реакцій під тематичними постами — негатив або іронія.`
@@ -68,7 +68,7 @@ function build(d: DashboardResponse, network?: Network, regions?: Regions, revie
   const fact = (key: string) => facts.find((f) => f.key === key)?.text;
   const answers: Brief["answers"] = {
     now: { label: "Що зараз?", text: `${headline} ${facts.slice(0, 2).map((f) => f.text).join(". ")}.` },
-    network: { label: "Що з мережею?", text: [fact("network"), fact("regions")].filter(Boolean).join(". ") + ". Це зовнішні вимірювання, які ловлять раптові збої відносно звичного рівня доби; хронічний стан зв'язку у прифронтових областях і окремі вишки вони не показують." },
+    network: { label: "Що з мережею?", text: [fact("network"), fact("regions")].filter(Boolean).join(". ") + ". Це зовнішні вимірювання, які ловлять раптові збої відносно звичного рівня доби; хронічний стан зв'язку у прифронтових областях, суто мобільні збої й окремі вишки вони не показують." },
     reviews: { label: "Що кажуть клієнти?", text: app ? `${fact("reviews")}.${themes.length ? ` Найчастіші теми скарг: ${themes.map(([n, c]) => `${n} (${c})`).join(", ")}.` : ""} Це найновіші відгуки, а не всі користувачі: рейтинг застосунку в магазині значно вищий.` : "Відгуки App Store зараз недоступні." },
     rivals: { label: "Що у конкурентів?", text: `${fact("rivals") ?? "Згадок конкурентів у вибраному вікні немає"}.${rivals.length ? ` У відгуках App Store негативних: ${rivals.map((r) => `${r.name} — ${pct(r.negative_share)}`).join(", ")}; у Vodafone — ${pct(app?.negative_share)}.` : ""}` },
     actions: { label: "Що робити?", text: advice.map((a, i) => `${i + 1}. ${a.text}`).join(" ") + " Це рекомендації за правилами, а не встановлені факти." },
