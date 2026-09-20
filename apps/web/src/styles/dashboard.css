@@ -32,7 +32,8 @@
 .metric-tile:hover,.brand-status:hover{border-color:var(--ring)}
 .metric-label{font-size:var(--f-xs);font-weight:500;color:var(--muted-foreground)}
 .metric-main{display:flex;align-items:center;gap:8px;justify-content:space-between;min-height:36px}
-.metric-main>strong{font-size:var(--f-2xl);line-height:1.2;font-weight:600;letter-spacing:-.04em;font-variant-numeric:normal;white-space:nowrap}
+/* Табличні цифри: значення оновлюються кожні 5 хв і не повинні змінювати ширину. */
+.metric-main>strong{font-size:var(--f-2xl);line-height:1.2;font-weight:600;letter-spacing:-.04em;font-variant-numeric:tabular-nums;white-space:nowrap}
 .metric-note{font-size:var(--f-xs);color:var(--subtle-foreground);margin-top:auto}
 .spark{width:72px;height:32px;min-width:0;color:var(--data-accent)}
 .dashboard-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;align-items:stretch}
