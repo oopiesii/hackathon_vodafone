@@ -16,6 +16,7 @@ import { NetworkHealth } from "../components/dashboard/NetworkHealth";
 import { AppReviews } from "../components/dashboard/AppReviews";
 import { RegionsHealth } from "../components/dashboard/RegionsHealth";
 import { Briefing } from "../components/dashboard/Briefing";
+import { WebMentions } from "../components/dashboard/WebMentions";
 import { quantity } from "../lib/plural";
 import { dailyBuckets } from "../lib/chart-buckets";
 import { api, can, errorText, type Me } from "../lib/api";
@@ -73,6 +74,7 @@ export function Dashboard({ me }: { me: Me | undefined }) {
         <IntegrationSlot />
         <Card className="span-4" title="Конкуренти">{calculating ? waiting : <BarList data={data.competitors.map(c => ({ id: c.brand, label: c.brand === "kyivstar" ? "Київстар" : c.brand === "lifecell" ? "lifecell" : c.brand, value: c.count, href: c.href }))} />}</Card>
         <Summary summary={data.ai} />
+        {can(me, "incident", "edit") && <WebMentions />}
       </div>
       <details className="dashboard-methodology"><summary>Методика, покриття та обмеження</summary><ul>{data.methodology.map(line => <li key={line}>{line}</li>)}</ul><MetricsTable data={data} /><div className="dashboard-method-meta">Відбір: {data.visibility === "accepted" ? "лише прийняті матеріали" : "прийняті та на перевірці"}. Зріз: {time(data.start)} – {time(data.end)} (місцевий час).</div></details>
     </div>}

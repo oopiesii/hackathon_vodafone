@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SendHorizontal, Sparkles } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router";
-import { api } from "../../lib/api";
+import { api, send } from "../../lib/api";
 import { Badge } from "../ui";
 
 // Ті самі ключі запитів, що й у блоках нижче: дані беруться зі спільного кешу, зайвих звернень до API немає.
@@ -26,7 +26,7 @@ const THEMES: [string, RegExp][] = [
 
 type Fact = { key: string; text: string; href?: string };
 type Advice = { text: string; why: string };
-type Brief = { tone: "calm" | "attention" | "critical"; headline: string; facts: Fact[]; advice: Advice[]; answers: Record<string, { label: string; text: string }> };
+type Brief = { tone: "calm" | "attention" | "critical"; headline: string; facts: Fact[]; advice: Advice[]; answers: Record<string, { label: string; text: string; hook: string }> };
 
 /** Підсумок за правилами з живих показників екрана. З ключем LLM заголовок і спостереження замінює зведення моделі (data.ai). */
 function build(d: DashboardResponse, network?: Network, regions?: Regions, reviews?: Reviews): Brief {
@@ -67,12 +67,12 @@ function build(d: DashboardResponse, network?: Network, regions?: Regions, revie
 
   const fact = (key: string) => facts.find((f) => f.key === key)?.text;
   const answers: Brief["answers"] = {
-    now: { label: "Що зараз?", text: `${headline} ${facts.slice(0, 2).map((f) => f.text).join(". ")}.` },
-    network: { label: "Що з мережею?", text: [fact("network"), fact("regions")].filter(Boolean).join(". ") + ". Це зовнішні вимірювання, які ловлять раптові збої відносно звичного рівня доби; хронічний стан зв'язку у прифронтових областях, суто мобільні збої й окремі вишки вони не показують." },
-    reviews: { label: "Що кажуть клієнти?", text: app ? `${fact("reviews")}.${themes.length ? ` Найчастіші теми скарг: ${themes.map(([n, c]) => `${n} (${c})`).join(", ")}.` : ""} Це найновіші відгуки, а не всі користувачі: рейтинг застосунку в магазині значно вищий.` : "Відгуки App Store зараз недоступні." },
-    rivals: { label: "Що у конкурентів?", text: `${fact("rivals") ?? "Згадок конкурентів у вибраному вікні немає"}.${rivals.length ? ` У відгуках App Store негативних: ${rivals.map((r) => `${r.name} — ${pct(r.negative_share)}`).join(", ")}; у Vodafone — ${pct(app?.negative_share)}.` : ""}` },
-    actions: { label: "Що робити?", text: advice.map((a, i) => `${i + 1}. ${a.text}`).join(" ") + " Це рекомендації за правилами, а не встановлені факти." },
-    money: { label: "Скільки це коштує?", text: "Орієнтир: година виручки Vodafone Україна ≈ 3,4 млн грн (14,9 млрд грн за I півріччя 2026). Збій на 10% абонентів протягом години — порядку 340 тис. грн. Кожна 1 000 абонентів, що пішли, — ≈ 1,85 млн грн на рік. Це оцінки за припущенням пропорційності; калькулятор — у блоці «Вплив на Vodafone»." },
+    now: { hook: "Хочете, розкладу це по джерелах — мережа, відгуки, конкуренти?", label: "Що зараз?", text: `${headline} ${facts.slice(0, 2).map((f) => f.text).join(". ")}.` },
+    network: { hook: "Хочете, поясню, що саме ці вимірювання бачать, а чого ні?", label: "Що з мережею?", text: [fact("network"), fact("regions")].filter(Boolean).join(". ") + ". Це зовнішні вимірювання, які ловлять раптові збої відносно звичного рівня доби; хронічний стан зв'язку у прифронтових областях, суто мобільні збої й окремі вишки вони не показують." },
+    reviews: { hook: "Хочете, порівняю з відгуками на застосунки конкурентів?", label: "Що кажуть клієнти?", text: app ? `${fact("reviews")}.${themes.length ? ` Найчастіші теми скарг: ${themes.map(([n, c]) => `${n} (${c})`).join(", ")}.` : ""} Це найновіші відгуки, а не всі користувачі: рейтинг застосунку в магазині значно вищий.` : "Відгуки App Store зараз недоступні." },
+    rivals: { hook: "Хочете, підкажу, на що з цього варто відповісти?", label: "Що у конкурентів?", text: `${fact("rivals") ?? "Згадок конкурентів у вибраному вікні немає"}.${rivals.length ? ` У відгуках App Store негативних: ${rivals.map((r) => `${r.name} — ${pct(r.negative_share)}`).join(", ")}; у Vodafone — ${pct(app?.negative_share)}.` : ""}` },
+    actions: { hook: "Хочете, порахую, скільки коштував би збій?", label: "Що робити?", text: advice.map((a, i) => `${i + 1}. ${a.text}`).join(" ") + " Це рекомендації за правилами, а не встановлені факти." },
+    money: { hook: "Хочете, покажу, що зараз із мережею?", label: "Скільки це коштує?", text: "Орієнтир: година виручки Vodafone Україна ≈ 3,4 млн грн (14,9 млрд грн за I півріччя 2026). Збій на 10% абонентів протягом години — порядку 340 тис. грн. Кожна 1 000 абонентів, що пішли, — ≈ 1,85 млн грн на рік. Це оцінки за припущенням пропорційності; калькулятор — у блоці «Вплив на Vodafone»." },
   };
   return { tone, headline, facts, advice, answers };
 }
@@ -95,16 +95,35 @@ export function Briefing({ data }: { data: DashboardResponse }) {
   const reviews = useQuery({ queryKey: ["context-reviews"], queryFn: () => api<Reviews>("/context/reviews"), refetchInterval: 30 * 60_000 });
   const brief = build(data, network.data, regions.data, reviews.data);
   const ai = data.ai.mode === "ai" && data.ai.status === "ready" ? data.ai : null;
-  const [log, setLog] = useState<{ q: string; key: string | null }[]>([]), [draft, setDraft] = useState("");
+  const runtime = useQuery({ queryKey: ["analyst-runtime"], queryFn: () => api<{ enabled: boolean; model: string | null }>("/analyst/runtime"), refetchInterval: 60_000 });
+  const live = runtime.data?.enabled === true;
+  type Entry = { q: string; a: string; hook?: string; followups: string[]; key: string | null; ai: boolean };
+  const [log, setLog] = useState<Entry[]>([]), [draft, setDraft] = useState(""), [thinking, setThinking] = useState<string | null>(null);
   const asked = new Set(log.map((l) => l.key));
-  const ask = (q: string, key: string | null) => setLog((prev) => [...prev, { q, key }].slice(-4));
-  const submit = (event: FormEvent) => { event.preventDefault(); const q = draft.trim(); if (!q) return; ask(q, intent(q)); setDraft(""); };
-  // LLM-SEAM(S5-chat): з ключем питання йде на сервер (намір → SQL-агрегати → відповідь моделі з доказами); зараз відповіді складаються з показників екрана.
+  const FALLBACK = "Поки відповідаю лише про показники цього екрана: стан зараз, мережа й області, відгуки клієнтів, конкуренти, гроші, що робити. Вільні запитання працюють, коли ввімкнено локальний рантайм (вкладка «Розробник»).";
+  const byRules = (q: string, key: string | null): Entry => ({ q, key, ai: false, followups: [], a: key ? brief.answers[key]!.text : FALLBACK, ...(key ? { hook: brief.answers[key]!.hook } : {}) });
+  // LLM-SEAM(S5-chat): з увімкненим рантаймом питання, історія розмови й факти екрана йдуть на /api/analyst/ask;
+  // будь-яка помилка чи вимкнений рантайм повертають відповідь за правилами, тож чат не лишається без відповіді.
+  async function ask(q: string, key: string | null) {
+    if (thinking) return;
+    if (!live) { setLog((prev) => [...prev, byRules(q, key)].slice(-4)); return; }
+    setThinking(q);
+    try {
+      const history = log.slice(-4).flatMap((l) => [{ role: "user" as const, text: l.q }, { role: "assistant" as const, text: l.a.slice(0, 1500) }]);
+      const reply = await send<{ answer: string; followups: string[] }>("/analyst/ask", "POST", { question: q, history,
+        facts: { headline: brief.headline, window: WINDOW[data.window], facts: brief.facts.map((f) => f.text), advice: brief.advice.map((a) => `${a.text} Чому: ${a.why}.`) } });
+      setLog((prev) => [...prev, { q, key, ai: true, a: reply.answer, followups: reply.followups }].slice(-4));
+    } catch { setLog((prev) => [...prev, byRules(q, key ?? intent(q))].slice(-4)); }
+    finally { setThinking(null); }
+  }
+  const submit = (event: FormEvent) => { event.preventDefault(); const q = draft.trim(); if (!q) return; void ask(q, intent(q)); setDraft(""); };
+  const last = log.at(-1);
   return (
     <section className={`briefing briefing-${brief.tone}`} aria-labelledby="briefing-title">
       <div className="briefing-main">
         <div className="briefing-eyebrow"><span id="briefing-title">Головне зараз</span>
-          {ai ? <Badge tone="info"><Sparkles size={12} aria-hidden="true" />AI-зведення · {ai.model ?? "модель"}</Badge> : <Badge tone="secondary" title="Зведення моделі з'явиться після додавання ключа LLM; зараз підсумок складається за правилами з показників екрана.">За правилами · AI очікує ключ</Badge>}
+          {ai ? <Badge tone="info"><Sparkles size={12} aria-hidden="true" />AI-зведення · {ai.model ?? "модель"}</Badge> : <Badge tone="secondary" title="Зведення моделі з'явиться, коли аналітик отримає модель (ключ або локальний рантайм); зараз підсумок складається за правилами з показників екрана.">Підсумок за правилами</Badge>}
+          {live && <Badge tone="info"><Sparkles size={12} aria-hidden="true" />Чат: {runtime.data?.model ?? "локальний рантайм"}</Badge>}
         </div>
         <h2 className="briefing-headline">{ai ? ai.summary : brief.headline}</h2>
         {ai && <p className="note">Показники екрана: {brief.headline}</p>}
@@ -115,16 +134,19 @@ export function Briefing({ data }: { data: DashboardResponse }) {
         <ol>{brief.advice.map((a, i) => <li key={i}>{a.text}<span>Чому: {a.why}.</span></li>)}</ol>
       </div>
       <div className="briefing-chat">
-        {log.length > 0 && <div className="briefing-log" role="log" aria-live="polite">{log.map((l, i) => <div key={i}>
+        {(log.length > 0 || thinking) && <div className="briefing-log" role="log" aria-live="polite">{log.map((l, i) => <div key={i}>
           <p className="briefing-q">{l.q}</p>
-          <p className="briefing-a">{l.key ? brief.answers[l.key]!.text : "Поки відповідаю лише про показники цього екрана: стан зараз, мережа й області, відгуки клієнтів, конкуренти, гроші, що робити. Вільні запитання запрацюють після додавання ключа LLM."}</p>
-        </div>)}</div>}
+          <p className="briefing-a">{l.a}{l.hook && <strong className="briefing-hook">{l.hook}</strong>}{l.ai && <span className="briefing-by">Відповідь моделі за показниками екрана · перевіряйте за доказами</span>}</p>
+        </div>)}
+          {thinking && <div><p className="briefing-q">{thinking}</p><p className="briefing-a briefing-thinking" role="status">Аналітик думає…</p></div>}
+        </div>}
         <div className="briefing-ask">
           <span className="briefing-more">{log.length ? "Хочеш дізнатись більше?" : "Запитайте аналітика:"}</span>
-          {Object.entries(brief.answers).filter(([key]) => !asked.has(key)).slice(0, 4).map(([key, a]) => <button key={key} type="button" className="btn btn-outline btn-sm" onClick={() => ask(a.label, key)}>{a.label}</button>)}
+          {last?.ai && last.followups.map((f) => <button key={f} type="button" className="btn btn-outline btn-sm" disabled={!!thinking} onClick={() => void ask(f, null)}>{f}</button>)}
+          {!(last?.ai && last.followups.length) && Object.entries(brief.answers).filter(([key]) => !asked.has(key)).slice(0, 4).map(([key, a]) => <button key={key} type="button" className="btn btn-outline btn-sm" disabled={!!thinking} onClick={() => void ask(a.label, key)}>{a.label}</button>)}
           <form onSubmit={submit}><label className="sr-only" htmlFor="briefing-input">Питання до аналітика</label>
             <input id="briefing-input" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Або напишіть своє питання…" autoComplete="off" />
-            <button type="submit" className="btn btn-sm" aria-label="Запитати"><SendHorizontal size={14} aria-hidden="true" /></button></form>
+            <button type="submit" className="btn btn-sm" aria-label="Запитати" disabled={!!thinking}><SendHorizontal size={14} aria-hidden="true" /></button></form>
         </div>
       </div>
     </section>

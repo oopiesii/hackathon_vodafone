@@ -31,6 +31,10 @@ services:
       PUBLIC_URL: https://hire.qpon
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?}
       TG_SESSION_KEY: ${TG_SESSION_KEY:?}
+      # Локальний рантайм Claude Code (лише демо): порожні значення = «не налаштовано». Див. docs/LOCAL_RUNTIME.md.
+      UFV_RUNTIME_BRIDGE_URL: ${UFV_RUNTIME_BRIDGE_URL:-}
+      UFV_RUNTIME_BRIDGE_TOKEN: ${UFV_RUNTIME_BRIDGE_TOKEN:-}
+    extra_hosts: ["host.docker.internal:host-gateway"]
     ports: ["127.0.0.1:8095:8080"]
     networks:
       backend: {}
@@ -99,6 +103,7 @@ services:
       UFV_LLM_BASE_URL: ${UFV_LLM_BASE_URL:-}
       UFV_LLM_ALLOWED_HOSTS: ${UFV_LLM_ALLOWED_HOSTS:-}
     volumes: ["/etc/ufv/analyst:/run/ufv-analyst:ro"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
     networks: [backend, egress]
     depends_on:
       postgres: {condition: service_healthy}

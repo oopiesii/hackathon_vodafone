@@ -8,8 +8,9 @@ type Region = { code: string; name: string; frontline?: boolean; ratio: number; 
 type RegionsResponse = { available: false; reason: string } | { available: true; fetched_at: string; regions: Region[] };
 
 const LEVEL = { normal: "Без раптових змін", degraded: "Різке просідання", outage: "Раптовий збій" } as const;
-// Показуємо відхилення від звичного рівня доби, а не «відсоток здоров'я»: вище звичного — це теж «без змін».
-const change = (ratio: number) => { const drop = Math.round((1 - ratio) * 100); return drop >= 3 ? `−${drop}%` : "без змін"; };
+// Частка від звичного рівня цієї ж доби; вище звичного показуємо як 100%, бо «103%» нічого не означає для читача.
+const pct = (ratio: number) => `${Math.round(Math.min(1, ratio) * 100)}%`;
+const change = (ratio: number) => `−${Math.max(0, Math.round((1 - ratio) * 100))}%`;
 const clock = (iso: string) => new Date(iso).toLocaleString("uk-UA", { timeZone: "Europe/Kyiv", hour: "2-digit", minute: "2-digit" });
 
 /** Раптові зміни зв'язності інтернету по областях за добу (усі оператори разом). Хронічних руйнувань не показує — див. примітку в блоці. */
@@ -19,7 +20,7 @@ export function RegionsHealth() {
   const troubled = ready?.regions.filter((r) => r.level !== "normal") ?? [];
   const dipped = ready ? [...ready.regions].sort((a, b) => a.lowest - b.lowest)[0] : undefined;
   return (
-    <Card className="span-12 context-card" title="Раптові збої зв'язку по областях · 24 години"
+    <Card className="span-12 context-card" title="Зв'язок по областях · % від звичного рівня доби"
       actions={ready && (troubled.length
         ? <Badge tone={troubled.some((r) => r.level === "outage") ? "danger" : "warning"} dot>{troubled.length} {plural(troubled.length, "область", "області", "областей")} з раптовим просіданням</Badge>
         : <Badge tone="success" dot>Раптових збоїв немає</Badge>)}
@@ -36,14 +37,14 @@ export function RegionsHealth() {
             ? <>Різко гірше, ніж було цієї доби: {troubled.slice(0, 4).map((r) => `${r.name} ${change(r.ratio)}`).join(", ")}. Звідти варто чекати скарг на зв'язок.</>
             : <>Раптових збоїв зв'язку за добу немає.{dipped && dipped.lowest < 0.97 ? ` Найглибше короткочасне просідання: ${dipped.name}, ${change(dipped.lowest)} о ${clock(dipped.lowest_at)}.` : ""}</>}
         </p>
-        <p className="regions-caveat"><strong>Що цей блок не показує.</strong> Він порівнює «зараз» зі звичним рівнем цієї ж доби, тому ловить лише раптові збої. У прифронтових областях зв'язок хронічно гірший — але там це вже і є «звичний рівень», тож «без змін» не означає «все добре».</p>
+        <p className="regions-caveat"><strong>Як читати.</strong> 100% — звичний рівень області за цю ж добу, тож блок ловить раптові збої. У прифронтових областях зв'язок хронічно гірший, але там це вже і є «звичний рівень»: 100% не означає «все добре».</p>
         <div className="regions-grid">
           {ready.regions.map((r) => <a key={r.code} className={`region region-${r.level}`} href={`https://ioda.inetintel.cc.gatech.edu/region/${r.code}`} target="_blank" rel="noopener noreferrer"
-            aria-label={`${r.name}${r.frontline ? ", прифронтова" : ""}: ${change(r.ratio)} відносно звичного рівня доби, ${LEVEL[r.level]}; найглибше просідання за добу ${change(r.lowest)} о ${clock(r.lowest_at)}`}>
+            aria-label={`${r.name}${r.frontline ? ", прифронтова" : ""}: ${pct(r.ratio)} від звичного рівня доби, ${LEVEL[r.level]}; мінімум за добу ${pct(r.lowest)} о ${clock(r.lowest_at)}`}>
             <span className="region-name">{r.name}</span>
-            <strong className={change(r.ratio) === "без змін" ? "region-value region-value-flat" : "region-value"}>{change(r.ratio)}</strong>
+            <strong className="region-value">{pct(r.ratio)}</strong>
             <Spark points={r.percent} />
-            <span className="region-state"><i aria-hidden="true" />{LEVEL[r.level]}{r.frontline && r.level === "normal" ? " · прифронтова" : ""}</span>
+            <span className="region-state"><i aria-hidden="true" />{r.level === "normal" ? `мін. за добу ${pct(r.lowest)}` : LEVEL[r.level]}{r.frontline ? " · прифронтова" : ""}</span>
           </a>)}
         </div>
       </>}

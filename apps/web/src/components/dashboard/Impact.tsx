@@ -1,16 +1,34 @@
+import { useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { Calculator, ExternalLink } from "lucide-react";
+import { api } from "../../lib/api";
 import { Badge, Card, Dialog, Field } from "../ui";
 const SOURCE = "https://interfax.com.ua/news/telecom/1196790.html";
 const revenuePerHour = 14_900_000_000 / (181 * 24);
 const money = (value: number) => value.toLocaleString("uk-UA", { maximumFractionDigits: 0 }) + " грн";
 const valid = (value: string, max: number) => value.trim() !== "" && Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= max;
+type Level = "normal" | "degraded" | "outage";
+type NetworkState = { available: boolean; operators?: { id: string; signals: { source: string; ratio: number; level: Level }[] }[] };
+type RegionsState = { available: boolean; regions?: { name: string; level: Level }[] };
 export function Impact() {
   const dialog = useRef<HTMLDialogElement>(null);
+  // Ті самі ключі запитів, що й у блоках мережі: дані зі спільного кешу.
+  const network = useQuery({ queryKey: ["context-network", "24h"], queryFn: () => api<NetworkState>("/context/network?window=24h"), refetchInterval: 5 * 60_000 });
+  const regions = useQuery({ queryKey: ["context-regions"], queryFn: () => api<RegionsState>("/context/regions"), refetchInterval: 10 * 60_000 });
+  const own = network.data?.available ? network.data.operators?.find(o => o.id === "vodafone")?.signals.find(s => s.source === "ping-slash24") : undefined;
+  const troubled = regions.data?.available ? (regions.data.regions ?? []).filter(r => r.level !== "normal") : [];
+  const known = own !== undefined || regions.data?.available === true;
+  const incident = (own && own.level !== "normal") || troubled.length > 0;
   const [hours, setHours] = useState("1"), [share, setShare] = useState("10"), [churn, setChurn] = useState("1000"), [work, setWork] = useState("1");
   const loss = valid(hours, 240) && valid(share, 100) ? revenuePerHour * Number(hours) * Number(share) / 100 : null;
   return <>
     <Card className="span-4" title="Вплив на Vodafone" actions={<Badge>Припущення</Badge>} footer={<button className="btn btn-outline btn-sm" type="button" onClick={() => dialog.current?.showModal()}><Calculator size={14} aria-hidden="true" />Розрахувати сценарій</button>}>
+      <div className={incident ? "impact-state impact-state-alert" : "impact-state"}>
+        <strong>{!known ? "Стан мережі зараз невідомий" : incident ? "Є раптове просідання зв'язку" : "Збоїв не зафіксовано"}</strong>
+        <span>{!known ? "Оцінку втрат почнемо рахувати, щойно з'являться вимірювання." : incident
+          ? `${own && own.level !== "normal" ? `Мережа Vodafone — ${Math.round(Math.min(1, own.ratio) * 100)}% від звичного рівня. ` : ""}${troubled.length ? `Області: ${troubled.slice(0, 3).map(r => r.name).join(", ")}. ` : ""}Втрати залежать від тривалості й частки абонентів — порахуйте сценарій.`
+          : "Оцінених грошових втрат зараз немає. Калькулятор нижче — для сценаріїв «що, якщо»."}</span>
+      </div>
       <div className="impact-teaser"><span>Година виручки компанії</span><strong>≈ 3,4 млн грн</strong><small>Орієнтир масштабу · I півріччя 2026</small><a href={SOURCE} target="_blank" rel="noopener noreferrer">Джерело · 28.08.2026<ExternalLink size={12} aria-hidden="true" /></a></div>
     </Card>
     <Dialog ref={dialog} title="Оцінка впливу · припущення" titleId="impact-title">

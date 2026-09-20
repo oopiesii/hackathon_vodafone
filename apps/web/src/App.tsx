@@ -86,7 +86,7 @@ function PrivateApp({ me }: { me: Me }) {
         {can(me, "collector", "manage") && <Route path="/sources" element={<Sources />} />}
         {can(me, "collector", "manage") && <Route path="/sources/telegram" element={<TelegramAdmin />} />}
         {can(me, "collector", "manage") && <Route path="/sources/rss" element={<RssSources />} />}
-        <Route path="/account" element={<Account />} />
+        <Route path="/account" element={<Account me={me} />} />
         {can(me, "collector", "manage") && <Route path="/admin/telegram" element={<TelegramAdmin />} />}
         {can(me, "user", "list") && <Route path="/admin/users" element={<AdminUsers />} />}
         <Route path="*" element={<Navigate to="/" replace />} />

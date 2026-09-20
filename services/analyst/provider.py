@@ -31,7 +31,7 @@ class Config:
 
     @property
     def enabled(self):
-        return self.provider in ('anthropic', 'openai-compatible') and bool(self.key and self.model)
+        return self.provider in ('anthropic', 'openai-compatible', 'local-runtime') and bool(self.key and self.model)
 
 
 def load_config():
@@ -57,7 +57,7 @@ def load_config():
     if not 0 <= cap <= 10000:
         raise ProviderError('runtime_config_invalid')
     provider = values['UFV_LLM_PROVIDER'] or 'null'
-    if provider not in ('null', 'anthropic', 'openai-compatible'):
+    if provider not in ('null', 'anthropic', 'openai-compatible', 'local-runtime'):
         raise ProviderError('runtime_config_invalid')
     model = values['UFV_LLM_MODEL']
     if len(model) > 200 or any(ord(c) < 32 for c in model):
@@ -82,6 +82,8 @@ class NoRedirect(HTTPRedirectHandler):
 
 
 class HTTPProvider:
+    timeout = 45
+
     def __init__(self, config):
         self.config = config
         base = config.base_url or self.default_base
@@ -97,13 +99,13 @@ class HTTPProvider:
         # No ambient proxy credentials, no redirects forwarding the API key.
         opener = build_opener(NoRedirect(), ProxyHandler({}))
         try:
-            with opener.open(req, timeout=45) as response:
+            with opener.open(req, timeout=self.timeout) as response:
                 data = response.read(1_048_577)
             if len(data) > 1_048_576:
                 raise ProviderError('provider_response_too_large')
             return json.loads(data)
         except HTTPError as error:
-            raise ProviderError('provider_rate_limited' if error.code == 429 else 'provider_http_error') from None
+            raise ProviderError('provider_rate_limited' if error.code == 429 else 'provider_runtime_disabled' if error.code == 409 else 'provider_http_error') from None
         except (URLError, TimeoutError, OSError):
             raise ProviderError('provider_unavailable') from None
         except (ValueError, UnicodeError):
@@ -149,7 +151,37 @@ class AnthropicProvider(HTTPProvider):
         return json.loads(''.join(part['text'] for part in reply['content'] if part['type'] == 'text'))
 
 
+class LocalRuntimeProvider(OpenAICompatibleProvider):
+    """Локальний рантайм Claude Code через services/runtime-bridge (лише демо).
+
+    Місток стоїть на тому самому сервері, тому дозволено http — але тільки до хоста, явно названого в
+    UFV_LLM_ALLOWED_HOSTS, і тільки якщо це loopback, приватна адреса або host.docker.internal.
+    Вимкнений перемикач містка (409) означає «моделі немає»: повертаємо None, і діють правила.
+    """
+    timeout = 180
+
+    def __init__(self, config):
+        self.config = config
+        parts = urlsplit(config.base_url)
+        host = (parts.hostname or '').lower()
+        explicit = {h for h in config.allowed_hosts if h not in DEFAULT_HOSTS}
+        private = host in ('localhost', 'host.docker.internal') or host.startswith(('127.', '10.', '192.168.')) \
+            or any(host.startswith(f'172.{n}.') for n in range(16, 32))
+        if (parts.scheme not in ('http', 'https') or host not in explicit or not private
+                or parts.username or parts.password or parts.query or parts.fragment):
+            raise ProviderError('provider_endpoint_not_allowed')
+        self.url = config.base_url.rstrip('/') + self.suffix
+
+    def complete_json(self, task, schema, payload):
+        try:
+            return super().complete_json(task, schema, payload)
+        except ProviderError as error:
+            if str(error) == 'provider_runtime_disabled':
+                return None
+            raise
+
+
 def make_provider(config):
     if not config.enabled:
         return NullProvider()
-    return (AnthropicProvider if config.provider == 'anthropic' else OpenAICompatibleProvider)(config)
+    return {'anthropic': AnthropicProvider, 'local-runtime': LocalRuntimeProvider}.get(config.provider, OpenAICompatibleProvider)(config)
