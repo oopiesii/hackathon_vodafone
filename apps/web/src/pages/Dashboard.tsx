@@ -68,16 +68,16 @@ export function Dashboard({ me }: { me: Me | undefined }) {
       </div>
       {data.vodafone_7d && <div className="dashboard-coverage"><Link className="btn btn-outline" to={data.vodafone_7d.href}>Vodafone: згадки за 7 днів — {count(data.vodafone_7d.count)}<ArrowUpRight size={16} aria-hidden="true" /></Link><span>Відсутність згадок за 24 години не означає відсутності даних за тиждень.</span></div>}
       {data.analysis_coverage && <div className="dashboard-coverage"><strong>{data.analysis_coverage.label || "Семантичний відбір"}{data.analysis_coverage.cutoff_at ? ` · зріз ${time(data.analysis_coverage.cutoff_at)}` : ""}</strong><span>{data.analysis_coverage.note}</span>{data.analysis_coverage.pending !== undefined && <Link to={`/inbox?workflow_id=${workflow}`}>Очікує семантичної перевірки: {count(data.analysis_coverage.pending)} · відкрити увесь вхід</Link>}</div>}
-      <DashboardGrid data={data} window={window} workflow={workflow} calculating={!!calculating} layout={layout} webMentions={webMentions} />
+      <DashboardGrid data={data} window={window} workflow={workflow} calculating={!!calculating} layout={layout} webMentions={webMentions} manage={can(me, "collector", "manage")} />
       <details className="dashboard-methodology"><summary>Методика, покриття та обмеження</summary><ul>{data.methodology.map(line => <li key={line}>{line}</li>)}</ul><MetricsTable data={data} /><div className="dashboard-method-meta">Відбір: {data.visibility === "accepted" ? "лише прийняті матеріали" : "прийняті та на перевірці"}. Зріз: {time(data.start)} – {time(data.end)} (місцевий час).</div></details>
     </div>}
   </div>;
 }
 
 /** Порядок блоків задає користувач; склад — завжди код і права ролі. */
-function DashboardGrid({ data, window, workflow, calculating, layout, webMentions }: {
+function DashboardGrid({ data, window, workflow, calculating, layout, webMentions, manage }: {
   data: DashboardResponse; window: DashboardWindow; workflow: string; calculating: boolean;
-  layout: ReturnType<typeof useDashboardLayout>; webMentions: boolean;
+  layout: ReturnType<typeof useDashboardLayout>; webMentions: boolean; manage: boolean;
 }) {
   const waiting = <div className="chart-no-data">Перераховуємо повні агрегати…</div>;
   const widget = layout.handle;
@@ -85,7 +85,7 @@ function DashboardGrid({ data, window, workflow, calculating, layout, webMention
     network: <NetworkHealth window={window} widget={widget("network", "Чи працює мережа")} />,
     reviews: <AppReviews widget={widget("reviews", "Відгуки App Store")} />,
     regions: <RegionsHealth widget={widget("regions", "Зв'язок по областях")} />,
-    now: <Card widget={widget("now", "Що зараз")} className="dashboard-now span-7" title="Що зараз" actions={<Badge>Останні 24 год</Badge>} footer={<Link className="btn btn-ghost btn-sm" to={`/feed?workflow_id=${workflow}&decision=${data.visibility === "accepted" ? "accepted" : "visible"}`}>Відкрити стрічку<ArrowUpRight size={14} aria-hidden="true" /></Link>}><Signals data={data} /></Card>,
+    now: <Card widget={widget("now", "Що зараз")} className="dashboard-now span-7" title="Що зараз" actions={<Badge>Останні 24 год</Badge>} footer={<Link className="btn btn-ghost btn-sm" to={`/feed?workflow_id=${workflow}&decision=${data.visibility === "accepted" ? "accepted" : "visible"}`}>Відкрити стрічку<ArrowUpRight size={14} aria-hidden="true" /></Link>}><Signals data={data} manage={manage} /></Card>,
     dynamics: <Card widget={widget("dynamics", window !== "24h" ? "Динаміка за днями" : "Динаміка згадок")} className="span-5" title={window !== "24h" ? "Динаміка за днями" : "Динаміка згадок"}>{calculating ? waiting : <HourlyBars data={window === "7d" ? dailyBuckets(data.hourly, data.start, data.end) : data.hourly} daily={window !== "24h"} />}</Card>,
     reactions: <Card widget={widget("reactions", "Реакції")} className="span-4" title="Реакції" actions={<Badge title={data.reactions.note}>Евристика</Badge>} footer={<span className="note">{calculating ? "Очікуємо повного зрізу" : `${quantity(data.reactions.observed_items, "матеріал", "матеріали", "матеріалів")} із реакціями · реакція на допис не дорівнює ставленню до оператора`}</span>}>{calculating ? waiting : <ShareBar negative={data.reactions.negative} ironic={data.reactions.ironic} sad={data.reactions.sad} positive={data.reactions.positive} href={data.reactions.href} />}{data.reaction_freshness && !calculating && <ReactionTiming data={data.reaction_freshness} />}</Card>,
     sources: <Card widget={widget("sources", "Джерела згадок")} className="span-4" title="Джерела згадок">{calculating ? waiting : <BarList data={data.sources.slice(0, 5).map(s => ({ id: s.id, label: s.title, value: s.count, href: s.href }))} />}</Card>,

@@ -53,6 +53,7 @@
 .signal-meta{font-size:var(--f-xs);color:var(--muted-foreground)}
 .signal-action{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:var(--f-xs);color:var(--muted-foreground);margin-top:8px}
 .signal-action .badge{font-size:var(--f-xs)}
+.signal-action-edit{margin-left:auto}
 .dashboard-empty{min-height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;color:var(--muted-foreground);padding:24px 12px}
 .dashboard-empty h3{color:var(--foreground)}
 .dashboard-empty>span{font-size:var(--f-sm);max-width:45ch}

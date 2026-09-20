@@ -9,6 +9,15 @@ export const TOPICS: Record<string, string> = {
   other: "Інше",
 };
 
+// Статус дій команди над матеріалом. Це не висновок моделі, а запис людини; типове значення — прочерк.
+export const ACTION_STATUS: Record<string, { label: string; tone: Tone }> = {
+  none: { label: "Дій ще немає", tone: "secondary" },
+  investigating: { label: "З’ясовуємо", tone: "info" },
+  responding: { label: "Реагуємо", tone: "warning" },
+  resolved: { label: "Вирішено", tone: "success" },
+};
+export const ACTION_VALUES = ["none", "investigating", "responding", "resolved"] as const;
+
 export const SOURCE_TYPES: Record<string, string> = { channel: "Канал", supergroup: "Супергрупа", forum: "Форум" };
 
 export const ROLES: Record<string, string> = { admin: "Адміністратор", analyst: "Аналітик", viewer: "Перегляд" };

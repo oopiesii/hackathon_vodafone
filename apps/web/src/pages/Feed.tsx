@@ -6,13 +6,13 @@ import { Link, useSearchParams } from "react-router";
 import { Alert, Badge, Card, Dialog, Empty, Field, PageHeader, Section, Stat } from "../components/ui";
 import { api, can, errorText, send, type Me } from "../lib/api";
 import { excerpt, formatDate, formatDateTime } from "../lib/format";
-import { TOPICS } from "../lib/labels";
+import { ACTION_STATUS, ACTION_VALUES, TOPICS } from "../lib/labels";
 
 type Item = {
   source_kind:string; id: string; text: string; summary: string; source_url: string; published_at: string | null; fetched_at: string;
   processed_at: string; edited_at: string | null; kind: string; topic: string; channel_title: string; reason: string;
   duplicate_of: string | null; context_id: string | null; manual_decision: string | null;
-  classifier?:string; model?:string; evidence_quote?:string|null;
+  classifier?:string; model?:string; evidence_quote?:string|null; action?: string;
 };
 type FeedData = {
   items: Item[]; total: { count: number; last_processed_at: string | null }; kinds: { kind: string; count: number }[];
@@ -34,6 +34,7 @@ export function Feed({ me, shared = false, shareScopeId, workflowId = "1", title
   const scoped = ["from", "until", "day", "source_id", "source_kind", "brand", "ids", "negative", "has_views", "has_reactions", "lag"].some(key => searchParams.has(key));
   const dashboardBack = "/?" + new URLSearchParams({ workflow_id: workflow, window: searchParams.get("window") || "24h" });
   const [detail, setDetail] = useState<Detail | null>(null), [detailError, setDetailError] = useState("");
+  const [actionPending, setActionPending] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const prefix = shared ? "/shared" : "";
   const access = shared ? { headers: { "x-ufv-share-scope": shareScopeId ?? "" } } : undefined;
@@ -50,6 +51,18 @@ export function Feed({ me, shared = false, shareScopeId, workflowId = "1", title
       setDetail(await api<Detail>(`${prefix}/documents/${id}`, access));
       dialog.current?.showModal();
     } catch (e) { setDetailError(errorText(e, "Не вдалося відкрити матеріал.")); }
+  }
+  // Статус дій зберігається окремо від рішення про відбір: він не змінює видимість матеріалу.
+  async function setAction(value: string) {
+    if (!detail) return;
+    setActionPending(true);
+    setDetailError("");
+    try {
+      await send(`/admin/documents/${detail.document.id}/action`, "PUT", { status: value });
+      setDetail({ ...detail, document: { ...detail.document, action: value } });
+      await feed.refetch();
+    } catch (e) { setDetailError(errorText(e, "Не вдалося зберегти статус дій.")); }
+    finally { setActionPending(false); }
   }
   async function review(value: string) {
     if (!detail) return;
@@ -158,6 +171,7 @@ export function Feed({ me, shared = false, shareScopeId, workflowId = "1", title
                 <Badge>{TOPICS[item.topic] ?? item.topic}</Badge>
                 {item.manual_decision && <Badge tone="info">Рішення людини</Badge>}
                 {item.classifier === 'semantic' && <Badge tone="info" title={item.model ?? undefined}>AI-відбір</Badge>}
+                {item.action && item.action !== "none" && ACTION_STATUS[item.action] && <Badge tone={ACTION_STATUS[item.action]!.tone} title="Статус дій команди">{ACTION_STATUS[item.action]!.label}</Badge>}
                 <time className="item-time" title="Опубліковано">{formatDate(item.published_at)}</time>
               </div>
               {item.source_kind==='rss'&&<a href={item.source_url} target="_blank" rel="noopener noreferrer">Джерело: {item.channel_title}</a>}
@@ -201,6 +215,7 @@ export function Feed({ me, shared = false, shareScopeId, workflowId = "1", title
         )}>
         {detail && (
           <>
+            {detailError && <Alert tone="danger">{detailError}</Alert>}
             <Section title="Матеріал">
               {detail.document.classifier === 'semantic' && <p><strong>Висновок AI:</strong> {detail.document.summary}</p>}
               <p className="note">{detail.document.reason}</p>
@@ -216,6 +231,19 @@ export function Feed({ me, shared = false, shareScopeId, workflowId = "1", title
             ) : detail.document.kind === "comment" ? (
               <p className="note">Контекст ще не отримано або недоступний у межах вашого доступу.</p>
             ) : null}
+            <Section title="Статус дій">
+              {can(me, "collector", "manage") ? (
+                <Field label="Що команда робить із цим матеріалом" hint="Зміна записується в журнал дій. Статус не впливає на відбір і на показники дашборда.">
+                  <select value={detail.document.action ?? "none"} disabled={actionPending} onChange={(e) => setAction(e.target.value)}>
+                    {ACTION_VALUES.map((value) => <option key={value} value={value}>{value === "none" ? "— дій ще немає" : ACTION_STATUS[value]!.label}</option>)}
+                  </select>
+                </Field>
+              ) : (
+                <p className="row">{detail.document.action && detail.document.action !== "none" && ACTION_STATUS[detail.document.action]
+                  ? <Badge tone={ACTION_STATUS[detail.document.action]!.tone}>{ACTION_STATUS[detail.document.action]!.label}</Badge>
+                  : <span className="note">— дій ще немає</span>}</p>
+              )}
+            </Section>
             <TelegramEvidence data={detail.telegram} />
             <Section title="Часові мітки">
               <dl className="meta-list">
