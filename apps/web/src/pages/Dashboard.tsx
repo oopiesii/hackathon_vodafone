@@ -47,7 +47,10 @@ export function Dashboard({ me }: { me: Me | undefined }) {
     </>} />
     <div className="dashboard-controls">
       <Tabs label="Період дашборда" value={window} onChange={v => setFilter("window", v)} items={[{ value: "24h", label: "Сьогодні" }, { value: "7d", label: "7 днів" }, { value: "30d", label: "30 днів" }]} />
-      <select aria-label="Напрям моніторингу" value={workflow} onChange={e => setFilter("workflow_id", e.target.value)}>{(workflows.data?.items ?? [{ id: "1", name: "Vodafone та український телеком" }]).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select>
+      {/* Список із одним напрямом — це не вибір, а зайвий рядок. Показуємо назву текстом. */}
+      {(workflows.data?.items.length ?? 0) > 1
+        ? <select aria-label="Напрям моніторингу" value={workflow} onChange={e => setFilter("workflow_id", e.target.value)}>{workflows.data!.items.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select>
+        : <span className="dashboard-workflow">{workflows.data?.items[0]?.name ?? "Vodafone та український телеком"}</span>}
       <span className="dashboard-period">{window === "24h" ? "Останні 24 години" : `Останні ${window === "7d" ? "7" : "30"} днів`} · Україна</span>
     </div>
     {layout.editing && <p className="dashboard-layout-hint" role="status">Стрілками змініть порядок блоків, «шевроном» згорніть непотрібні. Порядок і згорнуті блоки зберігаються лише в цьому браузері й не змінюють дані та права.</p>}
