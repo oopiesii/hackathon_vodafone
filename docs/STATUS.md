@@ -1,5 +1,16 @@
 # Поточний статус і передавання роботи
 
+## Постійний AI-конвеєр і офіційні відгуки App Store — production (2026-09-20, 06:15 UTC)
+
+- Підстава: пряме доручення користувача завершити приховані зміни, розгорнути повний конвеєр і гарантувати походження відгуків з Apple App Store.
+- **Розгорнуто:** API/UI `night-20260920T060931Z`, processor `night-20260920T062943Z`, analyst `night-20260920T061300Z`. Health, вхід, dashboard, inbox, сусідній маршрут і Chromium пройшли; Caddy, PostgreSQL, NATS та Telegram/RSS collectors не перезапускались. Маніфести: `/var/lib/ufv/releases/night-20260920T060931Z.json`, `/var/lib/ufv/releases/night-20260920T062943Z.json`, `/var/lib/ufv/releases/night-20260920T061300Z.json`.
+- Analyst працює через захищений local runtime bridge у режимі `active`, модель `claude-opus-5`, остання помилка очищена після успішної мітки. Catch-up пакує до 20 матеріалів в один виклик і вибирає найновіші першим. Дозволені 68 увімкнених Telegram і 12 RSS із `rights_status=allowed`; п'ять publisher-blocked RSS лишились `enabled=false`, `llm_allowed=false`.
+- `POST /api/admin/ai/sources/allow-all` та кнопка у Sources масово дозволяють тільки доступні джерела з обов'язковою підставою й аудитом. Міграції `0032_bulk_source_invalidation.sql` і `0033_large_source_invalidation.sql` застосовані; bulk-зміна 72 джерел у production виконалась за 2,35 с замість зависання на покрокових тригерах.
+- Відгуки читаються з офіційних публічних сторінок `apps.apple.com`; Apple Lookup підтверджує точний App ID до прийняття даних. Production API повертає по 10 записів для Vodafone `1178894933`, Київстар `771788824`, lifecell `580080545`, із `source=apple_app_store` та офіційним URL. Автори/профілі не повертаються; e-mail і телефони маскуються. Це видима вибірка Apple, не гарантовано найновіші чи всі відгуки.
+- Корінь `vodafon` тепер охоплює `vodafon`, `vodafone` і регістр; негативний контроль на сторонній текст лишається відхиленим. Revision processor піднято до 4; фонове повторне маркування історії триває, нові записи обробляються тим самим правилом одразу. Реальний запис із точним `vodafon` уже має revision 4, бренд Vodafone і рішення `accepted`.
+- Processor оновлює місячні агрегати до й після кожної історичної пачки; dirty-джерело обходить backoff попередньої планової спроби. Після виправлення production acceptance для 24h/7d/30d пройшов повністю, включно з усіма переходами до доказів.
+- Перевірки: typecheck/build; 2 parser-тести Apple; 35 цільових Python-тестів analyst/runtime/processor/classification; окремий bulk-тест на `ufv_checks`; production API перевірено на джерело, App ID, суму розподілу та відсутність identity-полів. Dashboard/Sources пройшли 8/8 browser-комбінацій 1440/390, light/dark без JS, HTTP 5xx і layout-помилок; після очищення runtime-помилки Sources повторно пройшла 4/4, PNG розглянуто вручну.
+
 ## Налаштування вигляду дашборда; права на файли блокують злиття (2026-09-20, 01:00 UTC)
 
 - Підстава: пряме доручення користувача продовжити нічний цикл і закривати наявні прогалини, плюс окреме прохання дати змогу згортати та переставляти блоки дашборда.

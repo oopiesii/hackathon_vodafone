@@ -10,11 +10,14 @@ import pipeline.processor as processor
 
 
 class FakeDB:
-    def __init__(self,clock,slow=()):
-        self.clock=clock;self.slow=set(slow);self.completed=[];self.transactions=[]
+    def __init__(self,clock,slow=(),dirty=()):
+        self.clock=clock;self.slow=set(slow);self.dirty=set(dirty);self.completed=[];self.transactions=[];self.queries=[]
         self.pool=SimpleNamespace(connection=self.connection)
 
-    def all(self,sql):return [{'source_id':i} for i in range(1,51)]
+    def all(self,sql):
+        self.queries.append(sql)
+        ids=self.dirty if 'where dirty' in sql and 'generated_at' not in sql else range(1,51)
+        return [{'source_id':i,'dirty':i in self.dirty} for i in ids]
 
     @contextmanager
     def connection(self):
@@ -53,3 +56,18 @@ def test_tick_budget_yields_between_source_transactions(monkeypatch):
     db=FakeDB(clock)
     completed=refresh_rollup_batch(db,{},budget_seconds=1)
     assert 9<=completed<=11 and completed==len(db.transactions)
+
+
+def test_dirty_source_bypasses_previous_timed_refresh_backoff(monkeypatch):
+    clock=[100.];monkeypatch.setattr(processor.time,'monotonic',lambda:clock[0])
+    db=FakeDB(clock,slow=[1]);deferred={}
+    assert refresh_rollup_batch(db,deferred)==49 and 1 in deferred
+    db.slow.clear();db.dirty.add(1);db.completed.clear()
+    assert refresh_rollup_batch(db,deferred)==50 and 1 in db.completed and 1 not in deferred
+
+
+def test_backlog_refreshes_only_dirty_sources(monkeypatch):
+    clock=[100.];monkeypatch.setattr(processor.time,'monotonic',lambda:clock[0])
+    db=FakeDB(clock,dirty=[3,7])
+    assert refresh_rollup_batch(db,{},dirty_only=True)==2
+    assert db.completed==[3,7]

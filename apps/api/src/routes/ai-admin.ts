@@ -20,6 +20,24 @@ export const aiAdmin = new Hono<AppEnv>()
     return c.json({...({heartbeat_at:null,mode:'waiting_key',model:null,last_error:null,limit_per_hour:60}),
       ...states[0],items_last_hour:budget[0]?.used||0,sources});
   })
+  .post('/sources/allow-all',async c=>{
+    const parsed=z.object({llm_basis:z.string().trim().min(10).max(1000)}).strict().safeParse(await c.req.json().catch(()=>null));
+    if(!parsed.success)throw new HTTPException(400,{message:'Потрібна підстава дозволу (10–1000 символів).'});
+    const basis=parsed.data.llm_basis,client=await appPool.connect();
+    try{
+      await client.query('begin');
+      // Telegram дозволено прямим дорученням власника продукту. Для RSS зберігаємо
+      // чинну межу прав: джерела зі статусом publisher-blocked не передаємо моделі.
+      const updated=await client.query(`update core.sources s set llm_allowed=true,llm_basis=$1
+        where s.enabled and not s.llm_allowed and (s.kind='telegram' or exists(
+          select 1 from core.rss_sources r where r.source_id=s.id and r.rights_status='allowed')) returning s.id`,[basis]);
+      for(const row of updated.rows)
+        await client.query(`insert into core.audit(actor_id,action,object_type,object_id,detail)
+          values($1,'llm_allowed','source',$2,$3::jsonb)`,[c.get('user').id,row.id,JSON.stringify({llm_allowed:true,llm_basis:basis,bulk:true})]);
+      await client.query('commit');
+      return c.json({updated:updated.rowCount??0});
+    }catch(error){await client.query('rollback');throw error;}finally{client.release();}
+  })
   .put('/sources/:id',async c=>{
     const id=c.req.param('id');
     if(!/^[1-9]\d{0,17}$/.test(id))throw new HTTPException(400);

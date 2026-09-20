@@ -1,6 +1,6 @@
 import type { DashboardResponse, DashboardWindow } from "@ufv/shared/dashboard";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowUpRight, LayoutGrid, RotateCcw, ShieldCheck, ShieldAlert } from "lucide-react";
+import { ArrowUpRight, LayoutGrid, RotateCcw, Shield, ShieldCheck, ShieldAlert } from "lucide-react";
 import { Fragment, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Alert, Badge, Card, PageHeader, Tabs } from "../components/ui";
@@ -63,8 +63,8 @@ export function Dashboard({ me }: { me: Me | undefined }) {
       <div className="dashboard-overview">
         <Link className={`brand-status brand-status-${data.brand_status.level}`} to={data.brand_status.href} title={data.brand_status.reason}>
           <span className="brand-status-label">Vodafone Україна <span>Евристика сигналів</span></span>
-          {data.brand_status.level === "calm" ? <ShieldCheck size={28} aria-hidden="true" /> : <ShieldAlert size={28} aria-hidden="true" />}
-          <strong className="brand-status-title">{{ calm: "Спокійно", attention: "Увага", critical: "Критично", unknown: "Недостатньо даних" }[data.brand_status.level]}</strong>
+          {data.brand_status.level === "calm" ? <ShieldCheck size={28} aria-hidden="true" /> : data.brand_status.level === "unknown" ? <Shield size={28} aria-hidden="true" /> : <ShieldAlert size={28} aria-hidden="true" />}
+          <strong className="brand-status-title">{data.brand_status.title}</strong>
           <span className="brand-status-problem">{data.brand_status.reason}</span><span className="brand-status-link">Перевірити докази<ArrowUpRight size={16} aria-hidden="true" /></span>
         </Link>
         <Metrics data={data} />
@@ -88,12 +88,12 @@ function DashboardGrid({ data, window, workflow, calculating, layout, webMention
     network: <NetworkHealth window={window} widget={widget("network", "Чи працює мережа")} />,
     reviews: <AppReviews widget={widget("reviews", "Відгуки App Store")} />,
     regions: <RegionsHealth widget={widget("regions", "Зв'язок по областях")} />,
-    now: <Card widget={widget("now", "Що зараз")} className="dashboard-now span-7" title="Що зараз" actions={<Badge>Останні 24 год</Badge>} footer={<Link className="btn btn-ghost btn-sm" to={`/feed?workflow_id=${workflow}&decision=${data.visibility === "accepted" ? "accepted" : "visible"}`}>Відкрити стрічку<ArrowUpRight size={14} aria-hidden="true" /></Link>}><Signals data={data} manage={manage} /></Card>,
+    ...(data.aggregated ? {} : { now: <Card widget={widget("now", "Що зараз")} className="dashboard-now span-7" title="Що зараз" actions={<Badge>Останні 24 год</Badge>} footer={<Link className="btn btn-ghost btn-sm" to={`/feed?workflow_id=${workflow}&decision=${data.visibility === "accepted" ? "accepted" : "visible"}`}>Відкрити стрічку<ArrowUpRight size={14} aria-hidden="true" /></Link>}><Signals data={data} manage={manage} /></Card> }),
     dynamics: <Card widget={widget("dynamics", window !== "24h" ? "Динаміка за днями" : "Динаміка згадок")} className="span-5" title={window !== "24h" ? "Динаміка за днями" : "Динаміка згадок"}>{calculating ? waiting : <HourlyBars data={window === "7d" ? dailyBuckets(data.hourly, data.start, data.end) : data.hourly} daily={window !== "24h"} />}</Card>,
     reactions: <Card widget={widget("reactions", "Реакції")} className="span-4" title="Реакції" actions={<Badge title={data.reactions.note}>Евристика</Badge>} footer={<span className="note">{calculating ? "Очікуємо повного зрізу" : `${quantity(data.reactions.observed_items, "матеріал", "матеріали", "матеріалів")} із реакціями · реакція на допис не дорівнює ставленню до оператора`}</span>}>{calculating ? waiting : <ShareBar negative={data.reactions.negative} ironic={data.reactions.ironic} sad={data.reactions.sad} positive={data.reactions.positive} href={data.reactions.href} />}{data.reaction_freshness && !calculating && <ReactionTiming data={data.reaction_freshness} />}</Card>,
     sources: <Card widget={widget("sources", "Джерела згадок")} className="span-4" title="Джерела згадок">{calculating ? waiting : <BarList data={data.sources.slice(0, 5).map(s => ({ id: s.id, label: s.title, value: s.count, href: s.href }))} />}</Card>,
     spread: <Card widget={widget("spread", "Поширення")} className="span-4" title="Поширення" actions={<Badge title="Перепублікації не доводять незалежність джерел.">Збіги змісту</Badge>}>
-      {calculating ? waiting : data.aggregated ? <div className="chart-no-data">Окремі поширення доступні у вікнах 24 год і 7 днів</div> : data.spread.length ? <div className="spread-list">{data.spread.slice(0, 3).map(s => <Link key={s.id} to={s.href}><strong>{quantity(s.count, "поширення", "поширення", "поширень")}</strong><span>{quantity(s.source_count, "джерело", "джерела", "джерел")}</span><small>{s.third_repost_seconds === null ? "Третю перепублікацію не зафіксовано" : `До 3-го поширення: ${count(s.third_repost_seconds / 60)} хв`}</small></Link>)}</div> : <div className="chart-no-data">Збігів змісту у вибраному вікні немає</div>}
+      {calculating ? waiting : data.aggregated ? <div className="chart-no-data">Окремі поширення доступні у вікнах 24 год і 7 днів</div> : data.spread.length ? <div className="spread-list">{data.spread.slice(0, 3).map(s => <Link key={s.id} to={s.href}><strong>{quantity(s.count, "поширення", "поширення", "поширень")}</strong><span>{quantity(s.source_count, "джерело", "джерела", "джерел")}</span><small>{s.third_repost_seconds === null ? "Третю перепублікацію не зафіксовано" : `До 3-го поширення: ${count(s.third_repost_seconds / 60)} хв`}{s.items_per_hour_first_6h ? ` · темп ${count(s.items_per_hour_first_6h)} матеріалів/год у перші 6 год` : ""}</small></Link>)}</div> : <div className="chart-no-data">Збігів змісту у вибраному вікні немає</div>}
     </Card>,
     impact: <Impact widget={widget("impact", "Вплив на Vodafone")} />,
     slot: <IntegrationSlot widget={widget("slot", "Стан мережі")} />,

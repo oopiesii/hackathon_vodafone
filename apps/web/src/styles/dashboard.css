@@ -117,7 +117,7 @@
 .impact-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:end}.impact-result{display:grid;gap:6px;padding:16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--canvas)}.impact-result>span,.impact-secondary>span{font-size:var(--f-xs);color:var(--muted-foreground)}.impact-result output{font-size:var(--f-xl);font-weight:600}.impact-secondary{display:grid;gap:8px;min-height:60px}.impact-secondary output{font-size:var(--f-md);font-weight:600;overflow-wrap:anywhere}
 @media(max-width:480px){.impact-fields{grid-template-columns:minmax(0,1fr)}.slot-row{flex-wrap:wrap}.integration-teaser .row{gap:4px}}
 
-.refresh-control{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end;max-width:100%}.refresh-details{position:relative;font-size:var(--f-xs)}.refresh-details>.stack{position:absolute;z-index:5;right:0;top:100%;width:min(360px,calc(100vw - 48px));padding:16px;border:1px solid var(--border);background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-md)}.refresh-details small{font-size:var(--f-xs);color:var(--muted-foreground)}
+.refresh-control{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end;max-width:100%}.refresh-details{position:relative;font-size:var(--f-xs)}.refresh-details:not([open])>.stack{display:none}.refresh-details>.stack{position:absolute;z-index:5;right:0;top:100%;width:min(360px,calc(100vw - 48px));padding:16px;border:1px solid var(--border);background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-md)}.refresh-details small{font-size:var(--f-xs);color:var(--muted-foreground)}
 .ai-source-list{margin-top:12px;max-height:380px;overflow-y:auto;padding-right:8px}.ai-source-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--border)}.ai-source-row>div{min-width:0;display:grid;gap:4px}.ai-source-row strong{overflow-wrap:anywhere;font-size:var(--f-sm)}.ai-source-row small{color:var(--muted-foreground);font-size:var(--f-xs)}.ai-source-row .switch{flex:none}.social-lifecycle{padding-left:24px;font-size:var(--f-sm);display:grid;gap:8px}
 @media(max-width:540px){.ai-source-row{align-items:flex-start;flex-direction:column}.refresh-control{justify-content:flex-start}}
 
@@ -140,6 +140,12 @@
 .widget-tools{display:flex;align-items:center;gap:2px;flex-shrink:0}
 .widget-position{color:var(--muted-foreground);font-size:var(--f-xs);font-variant-numeric:tabular-nums;padding-inline:4px}
 .dashboard-grid>.card-collapsed{align-self:start}
+/* Згортання плавне, але вміст лишається в DOM, тож прихованому даємо inert. */
+.card-collapse{display:grid;grid-template-rows:1fr;transition:grid-template-rows .18s ease}
+.card-collapsed .card-collapse{grid-template-rows:0fr}
+.card-collapse>*{overflow:hidden;min-height:0;transition:padding .18s ease}
+.card-collapsed .card-collapse>*{padding-top:0;padding-bottom:0}
+@media(prefers-reduced-motion:reduce){.card-collapse,.card-collapse>*{transition:none}}
 .dashboard-grid .card-collapsed .card-header{padding-bottom:16px}
 .dashboard-layout-hint{color:var(--muted-foreground);font-size:var(--f-sm);margin:0}
 

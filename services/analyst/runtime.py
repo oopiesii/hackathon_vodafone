@@ -9,7 +9,7 @@ import psycopg
 from pipeline.bus import connect
 
 from .db import DB
-from .label import analyze_item, pending_ids
+from .label import analyze_batch, analyze_item, pending_ids
 from .provider import Config, NullProvider, load_config, make_provider, ProviderError
 from .summary import summarize_window
 
@@ -21,21 +21,22 @@ class Analyst:
         self.db = db
         self.lock = threading.Lock()
 
-    def heartbeat(self, config, mode=None, error=None):
+    def heartbeat(self, config, mode=None, error=None, clear_error=False):
         self.db.execute('''insert into core.analyst_state(singleton,mode,model,last_error,limit_per_hour)
             values(true,%s,%s,%s,%s) on conflict(singleton) do update set heartbeat_at=now(),
             mode=excluded.mode,model=excluded.model,
             last_error=case when excluded.last_error is not null then excluded.last_error
-              when excluded.mode='waiting_key' then null else core.analyst_state.last_error end,
+              when excluded.mode='waiting_key' or %s then null else core.analyst_state.last_error end,
             limit_per_hour=excluded.limit_per_hour''',
-            (mode or ('active' if config.enabled else 'waiting_key'),config.model or None,error,config.max_items_per_hour))
+            (mode or ('active' if config.enabled else 'waiting_key'),config.model or None,error,config.max_items_per_hour,clear_error))
 
     def item(self, ident):
         with self.lock:
             config = load_config()
             result = analyze_item(self.db,ident,make_provider(config),config)
             self.heartbeat(config,'rate_limited' if result=='rate_limited' else None,
-                           result if result.startswith(('provider_','evidence_')) else None)
+                           result if result.startswith(('provider_','evidence_')) else None,
+                           result in ('complete','already_processed'))
             return result
 
     def tick(self):
@@ -44,6 +45,18 @@ class Analyst:
             provider = make_provider(config)
             config_version = f'{config.enabled}:{config.provider}:{config.model}'
             self.heartbeat(config)
+            # Нові матеріали мають пройти семантичну браму до того, як S2 витратить
+            # спільний погодинний бюджет на зведення. Catch-up пакує до 20 item/запит.
+            if config.enabled:
+                pending = pending_ids(self.db,config.model,limit=20)
+                if pending:
+                    result = analyze_batch(self.db,[row['id'] for row in pending],provider,config)
+                    if result == 'rate_limited':
+                        self.heartbeat(config,'rate_limited')
+                    elif result.startswith(('provider_','evidence_')):
+                        self.heartbeat(config,'error',result)
+                    elif result == 'complete':
+                        self.heartbeat(config,clear_error=True)
             # Check every five seconds; timestamp comparison observes the manual refresh queue.
             workflows = self.db.all('select distinct workflow_id from core.analyst_items')
             for row in workflows:
@@ -68,14 +81,6 @@ class Analyst:
                             self.heartbeat(config,'error',code)
                             # Reject the generated body; preserve the same real window/counts as rules.
                             summarize_window(self.db,row['workflow_id'],window,NullProvider(),Config())
-            if config.enabled:
-                for row in pending_ids(self.db,config.model,limit=4):
-                    result = analyze_item(self.db,row['id'],provider,config)
-                    if result == 'rate_limited':
-                        self.heartbeat(config,'rate_limited')
-                        break
-                    if result.startswith(('provider_','evidence_')):
-                        self.heartbeat(config,'error',result)
 
 
 async def consume(analyst):

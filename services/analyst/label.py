@@ -1,5 +1,6 @@
 """S1: version-bound розмітка одного дозволеного item і прямого контексту."""
 from datetime import datetime, timezone
+import json
 import uuid
 
 from psycopg.types.json import Jsonb
@@ -96,3 +97,92 @@ def analyze_item(db, ident, provider, config):
             error_code=null,analyzed_at=now()''', (ident,row['version'],parent_id,parent_version,config.model,VERSION,attempts))
         conn.execute('update core.analyst_state set last_label_at=now() where singleton')
     return 'complete'
+
+
+def analyze_batch(db, idents, provider, config, byte_limit=60000):
+    """Пакетний catch-up: один модельний виклик для кількох коротких матеріалів.
+
+    Живий NATS-шлях лишається поштучним, а історичний backlog використовує той самий
+    валідатор, version binding і receipts. Пакет обмежено і кількістю, і байтами.
+    """
+    if not config.enabled:
+        return 'waiting_key'
+    selected = []
+    size = 0
+    now = datetime.now(timezone.utc)
+    for ident in idents:
+        item = item_payload(db, ident)
+        if not item:
+            continue
+        row, parent, payload = item
+        parent_id = parent['id'] if parent else None
+        parent_version = parent['version'] if parent else None
+        old = db.one('select * from core.analyst_receipts where raw_item_id=%s', (ident,))
+        same = old and (old['raw_version'], old['parent_id'], old['parent_version'], old['model'], old['prompt_version']) == (
+            row['version'], parent_id, parent_version, config.model, VERSION)
+        if same and (old['status'] == 'complete' or old['attempts'] >= 3 or old['retry_at'] > now):
+            continue
+        payload_size = len(json.dumps(payload, ensure_ascii=False, separators=(',', ':')).encode())
+        if selected and size + payload_size > byte_limit:
+            break
+        selected.append({'ident': ident, 'row': row, 'parent_id': parent_id, 'parent_version': parent_version,
+                         'payload': payload, 'old': old, 'same': same})
+        size += payload_size
+    if not selected:
+        return 'already_processed'
+    if not reserve_budget(db, config.max_items_per_hour, len(selected)):
+        return 'rate_limited'
+    payloads = [entry['payload'] for entry in selected]
+    try:
+        output = provider.complete_json(PROMPT, SCHEMA, {'items': payloads})
+        if output is None:
+            return 'waiting_key'
+        labels = {label['id']: label for label in validate(output, payloads)}
+    except (ProviderError, ValueError) as exc:
+        code = str(exc) if isinstance(exc, ProviderError) else 'evidence_validation_failed'
+        for entry in selected:
+            attempts = entry['old']['attempts'] + 1 if entry['same'] else 1
+            db.execute('''insert into core.analyst_receipts(raw_item_id,raw_version,parent_id,parent_version,model,prompt_version,status,attempts,error_code,retry_at)
+                values(%s,%s,%s,%s,%s,%s,'error',%s,%s,now()+interval '15 minutes')
+                on conflict(raw_item_id) do update set raw_version=excluded.raw_version,parent_id=excluded.parent_id,
+                parent_version=excluded.parent_version,model=excluded.model,prompt_version=excluded.prompt_version,
+                status='error',attempts=excluded.attempts,error_code=excluded.error_code,retry_at=excluded.retry_at,analyzed_at=now()''',
+                (entry['ident'],entry['row']['version'],entry['parent_id'],entry['parent_version'],config.model,VERSION,attempts,code))
+        return code
+
+    stored = 0
+    runs = set()
+    today = datetime.now(timezone.utc).date().isoformat()
+    with db.pool.connection() as conn:
+        for entry in selected:
+            current = item_payload(db, entry['ident'])
+            if not current or current[2] != entry['payload'] or current[0]['version'] != entry['row']['version']:
+                continue
+            label = labels[entry['ident']]
+            label['context_versions'] = [{'id': c['id'], 'version': c['version']} for c in entry['payload']['context']]
+            label['input_truncated'] = entry['payload']['truncated']
+            if entry['row']['parent_item_id'] and entry['parent_id'] is None:
+                label['missing_parent_key'] = entry['row']['parent_item_id']
+            run = uuid.uuid5(uuid.NAMESPACE_URL, f'ufv:analyst:{entry["row"]["workflow_id"]}:{today}:{config.provider}:{config.model}:{VERSION}')
+            runs.add(run)
+            conn.execute('''insert into core.analysis_runs(id,workflow_id,cutoff_at,model,prompt_version,scope,status,total,note)
+                values(%s,%s,now(),%s,%s,%s,'running',0,'Постійний аналіз дозволених джерел; точність не виміряна.')
+                on conflict(id) do update set cutoff_at=now(),status='running' ''',
+                (run,entry['row']['workflow_id'],config.model,VERSION,Jsonb({'mode':'continuous','day_utc':today,'rights':'llm_allowed'})))
+            conn.execute('''insert into core.analysis_labels(run_id,raw_item_id,raw_version,label) values(%s,%s,%s,%s)
+                on conflict(run_id,raw_item_id) do update set raw_version=%s,label=%s,analyzed_at=now()''',
+                (run,entry['ident'],entry['row']['version'],Jsonb(label),entry['row']['version'],Jsonb(label)))
+            attempts = entry['old']['attempts'] + 1 if entry['same'] else 1
+            conn.execute('''insert into core.analyst_receipts(raw_item_id,raw_version,parent_id,parent_version,model,prompt_version,status,attempts)
+                values(%s,%s,%s,%s,%s,%s,'complete',%s) on conflict(raw_item_id) do update set
+                raw_version=excluded.raw_version,parent_id=excluded.parent_id,parent_version=excluded.parent_version,
+                model=excluded.model,prompt_version=excluded.prompt_version,status='complete',attempts=excluded.attempts,
+                error_code=null,analyzed_at=now()''',
+                (entry['ident'],entry['row']['version'],entry['parent_id'],entry['parent_version'],config.model,VERSION,attempts))
+            stored += 1
+        for run in runs:
+            conn.execute('''update core.analysis_runs set total=(select count(*) from core.analysis_labels where run_id=%s),
+                progress=jsonb_build_object('mode','continuous','last_label_at',now()) where id=%s''', (run,run))
+        if stored:
+            conn.execute('update core.analyst_state set last_label_at=now() where singleton')
+    return 'complete' if stored else 'input_changed'

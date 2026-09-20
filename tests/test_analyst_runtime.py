@@ -17,7 +17,7 @@ import pytest
 
 from test_analyst import mock_llm
 from analyst.db import DB,reserve_budget
-from analyst.label import analyze_item,pending_ids
+from analyst.label import analyze_batch,analyze_item,pending_ids
 from analyst.provider import Config,make_provider
 from analyst.runtime import Analyst,consume
 from analyst.summary import summarize_window
@@ -139,6 +139,24 @@ def test_bad_model_output_rejected_budget_persists_and_parent_reanalysis(ai_runt
     assert owner.one('select label from core.analysis_labels where raw_item_id=%s',(child,))['label']['context_versions'][0]['version']==2
 
 
+def test_batch_catchup_uses_one_request_and_writes_every_receipt(ai_runtime,allowed_source,mock_llm):
+    owner,db,_,_=ai_runtime;state,config=mock_llm
+    ids=[add_item(owner,allowed_source,f'Vodafone тестовий збій {index}.') for index in range(3)]
+    before=len(state['requests'])
+    assert analyze_batch(db,ids,make_provider(config),config)=='complete'
+    assert len(state['requests'])==before+1
+    payload=json.loads(state['requests'][-1]['messages'][-1]['content'].split('\n',1)[1])
+    assert [item['id'] for item in payload['items']]==ids
+    assert owner.one('select count(*) n from core.analyst_receipts where raw_item_id=any(%s) and status=\'complete\'',(ids,))['n']==3
+    assert owner.one('select count(*) n from core.analysis_labels where raw_item_id=any(%s)',(ids,))['n']==3
+    worker=Analyst(db)
+    worker.heartbeat(config,'error','provider_http_error')
+    worker.heartbeat(config)
+    assert owner.one('select last_error from core.analyst_state where singleton')['last_error']=='provider_http_error'
+    worker.heartbeat(config,clear_error=True)
+    assert owner.one('select last_error from core.analyst_state where singleton')['last_error'] is None
+
+
 def test_s2_validates_evidence_month_is_only_rollups_and_revoke_hides(ai_runtime,allowed_source,mock_llm):
     owner,db,_,cfg=ai_runtime;state,config=mock_llm
     ident=add_item(owner,allowed_source)
@@ -182,6 +200,14 @@ def test_api_admin_only_basis_audit_and_rss_rights(ai_runtime,allowed_source):
     assert owner.one("select detail from core.audit where action='llm_revoked' and object_id=%s order by id desc limit 1",(str(allowed_source['id']),))['detail']['llm_basis']=='Synthetic revoke basis'
     owner.execute("update core.rss_sources set rights_status='blocked' where source_id=%s",(allowed_source['id'],))
     assert admin.put(path,json={'llm_allowed':True,'llm_basis':'Synthetic allow basis'}).status_code==409
+    token=uuid.uuid4().hex
+    owner.execute('''insert into core.sources(kind,external_id,title,workflow_id,permission_note)
+        select 'telegram',%s||g,'Synthetic bulk Telegram '||g,%s,'Synthetic test authorization'
+        from generate_series(1,20) g''',(token,allowed_source['workflow_id']))
+    bulk=admin.post('/api/admin/ai/sources/allow-all',json={'llm_basis':'Synthetic bulk authorization'})
+    assert bulk.status_code==200 and bulk.json()['updated']==20
+    assert owner.one("select count(*) n from core.sources where external_id like %s and llm_allowed",(token+'%',))['n']==20
+    assert not owner.one('select llm_allowed from core.sources where id=%s',(allowed_source['id'],))['llm_allowed']
     status=admin.get('/api/admin/ai/status')
     assert status.status_code==200 and 'synthetic-test-value' not in status.text
 

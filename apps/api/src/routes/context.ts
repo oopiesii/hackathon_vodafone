@@ -11,8 +11,8 @@ context.get('/network', async (c) => {
   catch { return c.json({ available: false, reason: 'Зовнішнє джерело вимірювань зараз недоступне з сервера.' }); }
 });
 context.get('/reviews', async (c) => {
-  try { const data = await cached('reviews', 30 * 60_000, reviewsContext); return c.json({ available: true, fetched_at: new Date(cache.get('reviews')!.at).toISOString(), ...data }); }
-  catch { return c.json({ available: false, reason: 'Фід відгуків App Store зараз недоступний з сервера.' }); }
+  try { const data = await cached('reviews', 20 * 60_000, reviewsContext); return c.json({ available: true, fetched_at: new Date(cache.get('reviews')!.at).toISOString(), ...data }); }
+  catch { return c.json({ available: false, reason: 'Офіційні сторінки App Store зараз недоступні з сервера.' }); }
 });
 context.get('/regions', async (c) => {
   try { const data = await cached('regions', 10 * 60_000, regionsContext); return c.json({ available: true, fetched_at: new Date(cache.get('regions')!.at).toISOString(), ...data }); }

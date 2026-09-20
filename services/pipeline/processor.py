@@ -103,17 +103,20 @@ async def consume(db):
                 await nc.close()
 
 
-def refresh_rollup_batch(db, deferred, *, budget_seconds=15):
+def refresh_rollup_batch(db, deferred, *, budget_seconds=15, dirty_only=False):
     """Publish source generations separately so a slow source cannot starve the queue."""
     started=time.monotonic()
-    candidates=db.all("""select source_id from core.dashboard_rollup_state
+    candidates=db.all("""select source_id,dirty from core.dashboard_rollup_state
+        where dirty""" if dirty_only else """select source_id,dirty from core.dashboard_rollup_state
         where dirty or generated_at is null or generated_at<now()-interval '60 seconds'
-        order by generated_at nulls first,source_id""")
+        order by dirty desc,generated_at nulls first,source_id""")
     completed=0
     for row in candidates:
         ident=row['source_id']
         if time.monotonic()-started>=budget_seconds:break
-        if deferred.get(ident,0)>time.monotonic():continue
+        # A source may have failed a routine timed refresh and then become dirty.
+        # Dirty means the published aggregate is withheld, so it bypasses backoff.
+        if deferred.get(ident,0)>time.monotonic() and not row['dirty']:continue
         try:
             with db.pool.connection() as conn:
                 # Set before SELECT: changing statement_timeout inside a function does
@@ -140,6 +143,15 @@ async def main():
             rows=db.all('''select i.id from raw.items i join core.sources s on s.id=i.source_id
                 join core.workflows w on w.id=s.workflow_id left join core.processing_receipts p on p.raw_item_id=i.id
                 where p.raw_item_id is null or p.version<>i.version or p.processor_revision<>w.processor_revision order by i.id limit 200''')
+            # Keep the published 30-day snapshot available while a large historical
+            # processor revision is catching up. A model label can dirty a source
+            # at any time, so refresh both sides of the rules batch. Timed refreshes
+            # of already-clean sources resume as soon as the backlog is empty.
+            try:
+                await asyncio.to_thread(refresh_rollup_batch,db,deferred_rollups,dirty_only=bool(rows))
+            except Exception as exc:
+                log.warning('dashboard rollup retry: %s', type(exc).__name__)
+            last_rollup = time.monotonic()
             for row in rows:
                 process(db,row['id'])
             # A parent may arrive after its reply; retry only unresolved contexts whose parent is now present.
@@ -149,14 +161,14 @@ async def main():
                 where m.context_id is null and not m.deleted and not pm.deleted limit 100''')
             for row in late:
                 process(db,row['id'])
-            if time.monotonic() - last_rollup >= 2:
+            if rows or time.monotonic() - last_rollup >= 2:
                 try:
-                    await asyncio.to_thread(refresh_rollup_batch,db,deferred_rollups)
+                    await asyncio.to_thread(refresh_rollup_batch,db,deferred_rollups,dirty_only=bool(rows))
                 except Exception as exc:
                     log.warning('dashboard rollup retry: %s', type(exc).__name__)
                 last_rollup = time.monotonic()
             db.execute("insert into core.service_status(name,detail) values('processor','rules-v2; database catch-up active') on conflict(name) do update set heartbeat_at=now(),detail=excluded.detail")
-            await asyncio.sleep(2)
+            await asyncio.sleep(0.1 if rows else 2)
     finally:
         subscriber.cancel()
         await asyncio.gather(subscriber,return_exceptions=True)

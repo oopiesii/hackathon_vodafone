@@ -33,8 +33,9 @@ type Brief = { tone: "calm" | "attention" | "critical"; headline: string; facts:
 function build(d: DashboardResponse, network?: Network, regions?: Regions, reviews?: Reviews): Brief {
   const own = network?.available ? network.operators?.find((o) => o.id === "vodafone")?.signals.find((s) => s.source === "ping-slash24") : undefined;
   const troubled = regions?.available ? (regions.regions ?? []).filter((r) => r.level !== "normal") : [];
-  const app = reviews?.available ? reviews.apps?.find((a) => a.id === "vodafone") : undefined;
-  const rivals = reviews?.available ? (reviews.apps ?? []).filter((a) => a.id !== "vodafone") : [];
+  // Оператор без вибірки не дає підстав для твердження, тож у факти не потрапляє.
+  const app = reviews?.available ? reviews.apps?.find((a) => a.id === "vodafone" && a.sample > 0) : undefined;
+  const rivals = reviews?.available ? (reviews.apps ?? []).filter((a) => a.id !== "vodafone" && a.sample > 0) : [];
   // Критичність рахується так само, як статус бренду в API: вирішені сигнали не враховуються,
   // а сигнал про конкурента не видається за нашу проблему.
   const critical = d.signals.filter((s) => s.level === "h" && s.action !== "resolved");

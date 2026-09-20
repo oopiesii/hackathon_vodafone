@@ -5,6 +5,7 @@ import { env } from "./env.js";
 import { Hono } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { fileURLToPath } from 'node:url';
+import { startReviewsPolling } from './lib/context-sources.js';
 
 const APP_CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'";
 // /showcase — один самодостатній HTML (стилі, скрипт і шрифт вбудовано), тому inline дозволено лише там.
@@ -23,6 +24,8 @@ serverApp.route('/',app);
 const webRoot = fileURLToPath(new URL('../../web/dist/', import.meta.url));
 serverApp.use('*',serveStatic({root:webRoot}));
 serverApp.get('*',serveStatic({root:webRoot,path:'index.html'}));
+
+startReviewsPolling();
 
 const server = serve({ fetch: serverApp.fetch, hostname: env.HOST, port: env.PORT }, (info) => {
   console.log(`api: http://${info.address}:${info.port}/api (public origin ${env.PUBLIC_URL})`);

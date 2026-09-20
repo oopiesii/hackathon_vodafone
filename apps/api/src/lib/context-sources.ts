@@ -29,6 +29,13 @@ async function getJson(url: string): Promise<any> {
   if (!response.ok) throw new Error(`upstream_${response.status}`);
   return response.json();
 }
+async function getText(url: string): Promise<string> {
+  const response = await fetch(url, { signal: AbortSignal.timeout(20000), headers: { accept: 'text/html', 'user-agent': 'ufv-monitor/1.0 (+https://hire.qpon)' } });
+  if (!response.ok) throw new Error(`upstream_${response.status}`);
+  const text = await response.text();
+  if (text.length > 2_000_000) throw new Error('upstream_too_large');
+  return text;
+}
 const median = (values: number[]) => { const s = [...values].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)]! : 0; };
 
 // ---------- Зв'язність мереж операторів (IODA, Georgia Tech) ----------
@@ -104,30 +111,52 @@ export async function regionsContext() {
   return { from: new Date(from * 1000).toISOString(), until: new Date(until * 1000).toISOString(), regions, thresholds: LEVELS };
 }
 
-// ---------- Відгуки App Store (офіційний відкритий фід Apple) ----------
+// ---------- Відгуки App Store (офіційні публічні сторінки Apple) ----------
 const mask = (text: string) => text
   .replace(/\b[\w.+-]+@[\w.-]+\.[a-zA-Z]{2,}\b/g, '[email вилучено]')
   .replace(/(?<!\w)\+?\d[\d ()-]{8,}\d(?!\w)/g, '[номер вилучено]')
   .replace(/\s+/g, ' ').trim();
 
+type AppleReview = { id: string; rating: number; date: string; version: string; title: string; text: string };
+
+/**
+ * Apple припинила наповнювати старий customerreviews RSS, але офіційна публічна
+ * сторінка App Store віддає ті самі видимі відгуки у serialized-server-data.
+ * Авторів і відповіді розробника навмисно не повертаємо й не кешуємо.
+ */
+export function parseAppStoreReviewsPage(html: string): AppleReview[] {
+  const script = html.match(/<script\b[^>]*\bid=(?:["']serialized-server-data["']|serialized-server-data)[^>]*>([\s\S]*?)<\/script>/i)?.[1];
+  if (!script) throw new Error('apple_page_without_data');
+  const root = JSON.parse(script) as any;
+  const items = root?.data?.[0]?.data?.shelfMapping?.allProductReviews?.items;
+  if (!Array.isArray(items)) throw new Error('apple_page_without_reviews');
+  const seen = new Set<string>();
+  return items.flatMap((item: any) => {
+    const review = item?.review;
+    const id = String(review?.id ?? '');
+    const rating = Number(review?.rating);
+    const date = String(review?.date ?? '').slice(0, 10);
+    if (!/^\d+$/.test(id) || seen.has(id) || !Number.isInteger(rating) || rating < 1 || rating > 5 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return [];
+    seen.add(id);
+    return [{ id, rating, date, version: '', title: mask(String(review?.title ?? '')).slice(0, 120), text: mask(String(review?.contents ?? '')).slice(0, 400) }];
+  }).sort((a: AppleReview, b: AppleReview) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+}
+
 async function appReviews(op: (typeof OPERATORS)[number]) {
-  const [feed, lookup] = await Promise.all([
-    getJson(`https://itunes.apple.com/ua/rss/customerreviews/page=1/id=${op.app}/sortby=mostrecent/json`),
+  const pageUrl = `https://apps.apple.com/ua/app/id${op.app}?see-all=reviews&platform=iphone`;
+  const [page, lookup] = await Promise.all([
+    getText(pageUrl),
     getJson(`https://itunes.apple.com/lookup?id=${op.app}&country=ua`).catch(() => null),
   ]);
-  const raw = feed?.feed?.entry ?? [];
-  const entries: any[] = (Array.isArray(raw) ? raw : [raw]).filter((e) => e?.['im:rating']);
-  const reviews = entries.map((e) => ({
-    rating: Number(e['im:rating'].label), date: String(e.updated?.label ?? '').slice(0, 10), version: String(e['im:version']?.label ?? ''),
-    title: mask(String(e.title?.label ?? '')).slice(0, 120), text: mask(String(e.content?.label ?? '')).slice(0, 400),
-  })).filter((r) => r.rating >= 1 && r.rating <= 5);
+  const store = lookup?.results?.[0];
+  if (Number(store?.trackId) !== op.app) throw new Error('apple_app_identity_mismatch');
+  const reviews = parseAppStoreReviewsPage(page);
   const distribution = [1, 2, 3, 4, 5].map((stars) => ({ stars, count: reviews.filter((r) => r.rating === stars).length }));
   const negative = reviews.filter((r) => r.rating <= 2).length;
   const days = new Map<string, { date: string; negative: number; other: number }>();
   for (const r of reviews) { const d = days.get(r.date) ?? { date: r.date, negative: 0, other: 0 }; r.rating <= 2 ? d.negative++ : d.other++; days.set(r.date, d); }
-  const store = lookup?.results?.[0];
   return {
-    id: op.id as OperatorId, name: op.name, app_id: op.app, url: `https://apps.apple.com/ua/app/id${op.app}`,
+    id: op.id as OperatorId, name: op.name, app_id: op.app, url: pageUrl, source: 'apple_app_store' as const,
     sample: reviews.length, negative, negative_share: reviews.length ? negative / reviews.length : null,
     average: reviews.length ? reviews.reduce((a, r) => a + r.rating, 0) / reviews.length : null,
     period: { from: reviews.at(-1)?.date ?? null, to: reviews[0]?.date ?? null },
@@ -137,8 +166,45 @@ async function appReviews(op: (typeof OPERATORS)[number]) {
     recent_negative: op.id === 'vodafone' ? reviews.filter((r) => r.rating <= 2).slice(0, 6) : [],
   };
 }
+// Офіційна сторінка може бути тимчасово недоступна. Останній успішний зріз кожного
+// оператора тримаємо окремо й показуємо з явною позначкою часу, а не втрачаємо.
+type AppSnapshot = Awaited<ReturnType<typeof appReviews>>;
+const lastGoodReviews = new Map<string, { at: number; app: AppSnapshot }>();
+
+function emptyApp(op: (typeof OPERATORS)[number]) {
+  return { id: op.id as OperatorId, name: op.name, app_id: op.app, url: `https://apps.apple.com/ua/app/id${op.app}?see-all=reviews&platform=iphone`, source: 'apple_app_store' as const,
+    sample: 0, negative: 0, negative_share: null, average: null, period: { from: null as string | null, to: null as string | null },
+    store_rating: null as number | null, store_count: null as number | null,
+    distribution: [1, 2, 3, 4, 5].map((stars) => ({ stars, count: 0 })), daily: [] as AppSnapshot['daily'], recent_negative: [] as AppSnapshot['recent_negative'] };
+}
+
 export async function reviewsContext() {
-  const apps = (await Promise.all(OPERATORS.map((op) => appReviews(op).catch(() => null)))).filter((a): a is NonNullable<typeof a> => a !== null && a.sample > 0);
-  if (!apps.length) throw new Error('no_reviews');
+  const apps = await Promise.all(OPERATORS.map(async (op) => {
+    let fresh: AppSnapshot | null = null;
+    for (let attempt = 0; attempt < 2 && !fresh; attempt++) {
+      try {
+        const app = await appReviews(op);
+        if (app.sample > 0) fresh = app;
+      } catch { /* тимчасова мережева помилка не повинна прибирати останній чесний зріз */ }
+      if (!fresh && attempt === 0) await new Promise((r) => setTimeout(r, 400));
+    }
+    if (fresh) {
+      lastGoodReviews.set(op.id, { at: Date.now(), app: fresh });
+      return fresh;
+    }
+    const kept = lastGoodReviews.get(op.id);
+    // Оператора не можна мовчки прибирати: зниклий рядок читається як «у нього немає скарг».
+    return kept ? { ...kept.app, stale_at: new Date(kept.at).toISOString() } : { ...emptyApp(op), unavailable: 'empty' as const };
+  }));
+  if (!apps.some((a) => a.sample > 0)) throw new Error('no_reviews');
   return { apps };
+}
+
+/** Фонове оновлення офіційного зрізу, щоб перший перегляд дашборда не чекав Apple. */
+export function startReviewsPolling(intervalMs = 20 * 60_000) {
+  const tick = () => { reviewsContext().then((value) => cache.set('reviews', { at: Date.now(), value })).catch(() => {}); };
+  setTimeout(tick, 5_000);
+  const timer = setInterval(tick, intervalMs);
+  timer.unref?.();
+  return timer;
 }

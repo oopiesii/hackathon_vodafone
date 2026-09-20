@@ -34,8 +34,12 @@ export function Card({ title, description, actions, footer, className = "", widg
           {(actions || widget) && <div className="row">{actions}{widget && <WidgetTools widget={widget} />}</div>}
         </div>
       )}
-      {!collapsed && children && <div className="card-content">{children}</div>}
-      {!collapsed && footer && <div className="card-footer">{footer}</div>}
+      {children && (widget
+        ? <div className="card-collapse" aria-hidden={collapsed} inert={collapsed}><div className="card-content">{children}</div></div>
+        : <div className="card-content">{children}</div>)}
+      {footer && (widget
+        ? <div className="card-collapse" aria-hidden={collapsed} inert={collapsed}><div className="card-footer">{footer}</div></div>
+        : <div className="card-footer">{footer}</div>)}
     </section>
   );
 }

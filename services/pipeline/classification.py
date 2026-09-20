@@ -8,7 +8,7 @@ VERSION = 'rules-v2'
 NORMALIZATION_VERSION = 'normalize-v2'
 MAX_TEXT_LENGTH = 65536
 TOPICS = {
-    'mobile': ('vodafone', 'водафон', 'київстар', 'киевстар', 'kyivstar', 'lifecell', 'лайфсел',
+    'mobile': ('vodafon', 'водафон', 'київстар', 'киевстар', 'kyivstar', 'lifecell', 'лайфсел',
                'мобільн', 'мобильн', 'телефоні', 'телефони', 'телеком', 'telecom', 'роумін', 'роумин',
                'стільников', 'сотов', 'sim-карт', 'esim', 'базова станц', 'базової станц', '5g', '4g', 'lte'),
     'internet': ('інтернет', 'интернет', 'internet', 'wi-fi', 'wifi', 'оптоволок', 'провайдер',
@@ -57,7 +57,7 @@ def classify(text: str, parent: str = '', filter_spam: bool = True) -> Verdict:
     lower = text.casefold()
     parent_lower = parent.casefold()
     brand = next((name for name, variants in (
-        ('vodafone', ('vodafone', 'водафон')), ('kyivstar', ('kyivstar', 'київстар', 'киевстар')),
+        ('vodafone', ('vodafon', 'водафон')), ('kyivstar', ('kyivstar', 'київстар', 'киевстар')),
         ('lifecell', ('lifecell', 'лайфсел'))) if any(v in lower for v in variants)), 'telecom')
     topic = next((key for key in ('billing', 'support', 'internet', 'network', 'mobile')
                   if any(v in lower for v in TOPICS[key])), 'other')

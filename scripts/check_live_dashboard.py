@@ -71,9 +71,16 @@ def main():
                               'aggregate_updated_at': data.get('aggregate_updated_at'),
                               'result': 'PASS'}, ensure_ascii=False), flush=True)
         status = get('/api/admin/ai/status')
-        assert all(not source['llm_allowed'] for source in status['sources'] if source['kind'] == 'telegram'), 'Telegram LLM policy changed'
+        telegram = [source for source in status['sources'] if source['kind'] == 'telegram']
+        allowed_rss = [source for source in status['sources'] if source['kind'] == 'rss' and source['rights_status'] == 'allowed']
+        blocked_rss = [source for source in status['sources'] if source['kind'] == 'rss' and source['rights_status'] != 'allowed']
+        assert telegram and all(source['llm_allowed'] for source in telegram), 'Enabled Telegram sources must be allowed for the instructed AI run'
+        assert all(source['llm_allowed'] for source in allowed_rss), 'Rights-allowed enabled RSS sources must be allowed for AI'
+        assert blocked_rss and all(not source['llm_allowed'] for source in blocked_rss), 'Publisher-blocked RSS sources must stay outside AI'
+        assert status['mode'] == 'active' and status['last_error'] is None, 'Analyst runtime is not healthy and active'
         print(json.dumps({'analyst_mode': status['mode'], 'heartbeat_at': status['heartbeat_at'],
-                          'telegram_llm_allowed': 0, 'result': 'PASS'}, ensure_ascii=False), flush=True)
+                          'telegram_llm_allowed': len(telegram), 'rss_llm_allowed': len(allowed_rss),
+                          'rss_blocked': len(blocked_rss), 'result': 'PASS'}, ensure_ascii=False), flush=True)
 
 
 if __name__ == '__main__':

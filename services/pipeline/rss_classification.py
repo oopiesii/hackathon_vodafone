@@ -1,7 +1,7 @@
 """News need telecom anchors: generic 'network', 'support', 'tariff' are insufficient."""
 import re
 from .classification import classify, Verdict
-ANCHOR = re.compile(r'vodafone|водафон|київстар|киевстар|kyivstar|lifecell|лайфсел|укртелеком|інтертелеком|'
+ANCHOR = re.compile(r'vodafon|водафон|київстар|киевстар|kyivstar|lifecell|лайфсел|укртелеком|інтертелеком|'
     r'телеком|telecom|роумін|роумин|стільников|сотов|esim|sim-карт|базов.{0,12}станц|'
     r'мобільн.{0,25}(зв.яз|інтернет|оператор|мереж)|мобильн.{0,25}(связ|интернет|оператор)|'
     r'(інтернет|интернет).{0,25}(провайдер|доступ|збій|відключ|покрит|тариф)|'
